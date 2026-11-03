@@ -102,15 +102,18 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 
 ## Matriz de Servicio (configuración)
 
-- [ ] **Pendientes de completar** (sección 10): criterio sin definir por la clienta (¿falta algún
-      cargo, alguna métrica…?). La sección muestra un aviso; no se calculó nada.
+- [x] **Navegación simplificada** (2026-11-03): 6 pestañas (Clientes y proyectos, Centros de
+      costo, Servicios, Cargos, Composición salarial, Contratos). Las métricas se editan desde
+      cada fila de Composición salarial; una métrica nueva se crea ahí mismo en el catálogo.
+      Sin pestañas de catálogo de métricas, catálogo de bonos ni "Pendientes de completar"
+      (ese concepto vive en el Tablero). Los endpoints `/config/catalogo-*` siguen disponibles.
 - [ ] **Sin políticas RLS en producción** (la base impide la operación; no se agregaron):
       - borrar `proyectos`;
       - editar y borrar `catalogo_metricas` (solo hay alta);
       - borrar `catalogo_bonos`.
       Habilitarlas = agregar políticas en Supabase (decisión + confirmación).
-- [ ] **Catálogo de bonos**: catálogo simple, **sin conexión a nada** (las métricas usan
-      `metrica_id`). No se definió su uso.
+- [ ] **Catálogo de bonos**: **sin conexión a nada** (las métricas usan `metrica_id`); fuera de la
+      navegación. No se definió su uso.
 - [ ] **Logo y manual de marca del cliente**: hoy URL/texto; subir el archivo, pendiente.
 - [ ] **Composición salarial**: alta y edición de haberes implementadas; eliminar una composición
       no fue pedido (la política de la base lo permitiría a RR.HH.).
