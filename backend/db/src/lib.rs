@@ -13,6 +13,7 @@ use std::fmt;
 pub mod almanaque;
 pub mod aprobaciones;
 pub mod auth;
+pub mod configuracion;
 pub mod matriz;
 pub mod parametros;
 pub mod requerimientos;
@@ -36,6 +37,12 @@ const SQLSTATE_RAISE_EXCEPTION: &str = "P0001";
 /// SQLSTATE `unique_violation`.
 const SQLSTATE_DUPLICADO: &str = "23505";
 
+/// SQLSTATE `foreign_key_violation` (ej. borrar algo que otro registro usa).
+const SQLSTATE_FK: &str = "23503";
+
+/// SQLSTATE `check_violation` (CHECK de la base, o un trigger que lo usa como código).
+const SQLSTATE_CHECK: &str = "23514";
+
 #[derive(Debug)]
 pub enum DbError {
     Sqlx(sqlx::Error),
@@ -54,6 +61,22 @@ impl DbError {
     pub fn es_duplicado(&self) -> bool {
         matches!(self, Self::Sqlx(sqlx::Error::Database(e))
             if e.code().as_deref() == Some(SQLSTATE_DUPLICADO))
+    }
+
+    /// `true` si se violó una FK (el registro está en uso o la referencia no existe).
+    pub fn es_fk(&self) -> bool {
+        matches!(self, Self::Sqlx(sqlx::Error::Database(e))
+            if e.code().as_deref() == Some(SQLSTATE_FK))
+    }
+
+    /// Mensaje de un CHECK violado (o de un trigger que usa ese código), si lo es.
+    pub fn check_violado(&self) -> Option<&str> {
+        match self {
+            Self::Sqlx(sqlx::Error::Database(e)) if e.code().as_deref() == Some(SQLSTATE_CHECK) => {
+                Some(e.message())
+            }
+            _ => None,
+        }
     }
 
     /// Mensaje de una regla de negocio rechazada por la base (`RAISE EXCEPTION`), si lo es.
