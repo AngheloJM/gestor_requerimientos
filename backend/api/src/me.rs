@@ -18,6 +18,11 @@ pub struct MeDto {
     /// Solo para la UI (menú); la autorización real la aplica RLS.
     pub rol: Option<String>,
     pub activo: Option<bool>,
+    /// Datos del solicitante (se muestran en "Nuevo requerimiento").
+    pub cargo: Option<String>,
+    pub division: Option<String>,
+    pub region: Option<String>,
+    pub inmediato_superior: Option<String>,
 }
 
 pub async fn get_me(State(pool): State<PgPool>, user: AuthUser) -> ApiResult<Json<MeDto>> {
@@ -31,5 +36,9 @@ pub async fn get_me(State(pool): State<PgPool>, user: AuthUser) -> ApiResult<Jso
         nombre: perfil.nombre,
         rol: perfil.rol,
         activo: perfil.activo,
+        cargo: perfil.cargo,
+        division: perfil.division,
+        region: perfil.region,
+        inmediato_superior: perfil.inmediato_superior,
     }))
 }

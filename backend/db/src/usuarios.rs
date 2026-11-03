@@ -11,12 +11,24 @@ pub struct Perfil {
     pub nombre: Option<String>,
     pub rol: Option<String>,
     pub activo: Option<bool>,
+    /// Nombre del cargo (catálogo `cargos`).
+    pub cargo: Option<String>,
+    pub division: Option<String>,
+    pub region: Option<String>,
+    /// Nombre del inmediato superior (si RLS permite ver su fila).
+    pub inmediato_superior: Option<String>,
 }
 
 /// Perfil del usuario, si RLS permite verlo.
 pub async fn perfil(conn: &mut PgConnection, id: Uuid) -> Result<Option<Perfil>, DbError> {
     Ok(sqlx::query_as(
-        "SELECT id, nombre::text AS nombre, rol::text AS rol, activo FROM usuarios WHERE id = $1",
+        "SELECT u.id, u.nombre::text AS nombre, u.rol::text AS rol, u.activo,
+                c.nombre::text AS cargo, u.division::text AS division, u.region::text AS region,
+                sup.nombre::text AS inmediato_superior
+         FROM usuarios u
+         LEFT JOIN cargos c ON c.id = u.cargo_id
+         LEFT JOIN usuarios sup ON sup.id = u.inmediato_superior_id
+         WHERE u.id = $1",
     )
     .bind(id)
     .fetch_optional(conn)
