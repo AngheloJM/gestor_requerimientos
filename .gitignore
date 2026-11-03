@@ -1,0 +1,14 @@
+# Compilación
+backend/target/
+node_modules/
+dist/
+
+# Variables de entorno y secretos (nunca versionar)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Editor / sistema
+.idea/
+.DS_Store
