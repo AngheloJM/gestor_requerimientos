@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { RequireAuth } from '@/auth/RequireAuth'
 import { Layout } from '@/components/Layout'
 import { AlmanaquePage } from '@/pages/AlmanaquePage'
+import { AprobacionesPage } from '@/pages/AprobacionesPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { MisRequerimientosPage } from '@/pages/MisRequerimientosPage'
 import { NuevoRequerimientoPage } from '@/pages/NuevoRequerimientoPage'
@@ -25,7 +26,7 @@ export default function App() {
             <Route path="/roles/:id" element={<RolEditorPage />} />
             <Route path="/matriz" element={<Pendiente titulo="Matriz de servicio" hook="useMatrizServicio" />} />
             <Route path="/almanaque" element={<AlmanaquePage />} />
-            <Route path="/aprobaciones" element={<Pendiente titulo="Aprobaciones" hook="useAprobaciones / useEditarFechaFin" />} />
+            <Route path="/aprobaciones" element={<AprobacionesPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/tablero" replace />} />
