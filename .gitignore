@@ -12,3 +12,8 @@ dist/
 # Editor / sistema
 .idea/
 .DS_Store
+
+# Documentos del cliente / patrocinador (confidenciales: NO publicar)
+/*.docx
+/Prototipo_*.html
+/referencias/
