@@ -15,6 +15,7 @@ mod seguridad;
 mod sesion;
 mod state;
 mod tablero;
+mod usuarios;
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
@@ -23,7 +24,7 @@ use axum::{
     extract::DefaultBodyLimit,
     http::StatusCode,
     middleware,
-    routing::{get, patch, post},
+    routing::{get, patch, post, put},
 };
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
@@ -113,6 +114,9 @@ fn protected_routes(state: AppState) -> Router<AppState> {
             get(requerimientos::listar).post(requerimientos::crear),
         )
         .route("/requerimientos/opciones", get(requerimientos::opciones))
+        .route("/usuarios", get(usuarios::listar))
+        .route("/usuarios/opciones", get(usuarios::opciones))
+        .route("/usuarios/{id}", put(usuarios::actualizar))
         .route("/permisos", get(roles::permisos))
         .route("/roles", get(roles::listar).post(roles::crear))
         .route(
