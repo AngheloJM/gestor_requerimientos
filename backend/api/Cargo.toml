@@ -1,0 +1,31 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = { workspace = true, features = ["serde", "clock"] }
+domain = { workspace = true }
+db = { workspace = true }
+
+axum = "0.8.9"
+dotenvy = "0.15.7"
+jsonwebtoken = { version = "11.1.0", features = ["rust_crypto"] }
+rust_decimal = { workspace = true, features = ["serde"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+uuid = { workspace = true, features = ["serde"] }
+validator = { version = "0.21.0", features = ["derive"] }
+tower-http = { version = "0.6", features = ["cors"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
+
+[dev-dependencies]
+base64 = "0.23.1"
+http-body-util = "0.1.5"
+p256 = "0.13"
+rust_decimal_macros = { workspace = true }
+tower = { version = "0.5.3", features = ["util"] }
