@@ -72,13 +72,21 @@ export interface FilaMatriz {
   metricas: Metrica[]
 }
 
-// GET /almanaque?mes=&anio=
+// GET /almanaque?mes=&anio=  (fuente: leer_eventos_almanaque + solo servicios activos)
+export type EstadoEntrega = 'pendiente' | 'aceptada' | 'rechazada'
+
 export interface LineaAlmanaque {
-  servicio: Ref | null
-  cargo: Ref
+  cliente: string | null
+  /** null si el requerimiento no tiene servicio. */
+  servicio: string | null
+  cargo: string | null
+  /** Solo entregas y rectificaciones. */
+  estado_entrega: EstadoEntrega | string | null
+  /** Suma; las rectificaciones pueden ser negativas. */
   cantidad: number
   /** Registros agrupados con cantidad NULL (no sumados). */
   registros_sin_cantidad: number
+  folios: string[]
 }
 
 export interface DiaAlmanaque {

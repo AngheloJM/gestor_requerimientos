@@ -25,3 +25,20 @@ export function restarDias(f: FechaIso, dias: number): FechaIso {
   const [y, m, d] = f.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, d - dias)).toISOString().slice(0, 10)
 }
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+/** (2026, 11) → "Noviembre 2026". */
+export function nombreMes(anio: number, mes: number): string {
+  const m = MESES[mes - 1] ?? String(mes)
+  return `${m.charAt(0).toUpperCase()}${m.slice(1)} ${anio}`
+}
+
+/** Día de la semana con lunes = 0, en calendario puro (UTC). */
+export function diaSemanaLunes(f: FechaIso): number {
+  const [y, m, d] = f.split('-').map(Number)
+  return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7
+}

@@ -20,3 +20,12 @@ describe('restarDias', () => {
     expect(restarDias('2027-01-03', 5)).toBe('2026-12-29')
   })
 })
+
+describe('calendario', () => {
+  it('nombra meses y calcula el día de la semana con lunes primero', async () => {
+    const { nombreMes, diaSemanaLunes } = await import('@/lib/format')
+    expect(nombreMes(2026, 11)).toBe('Noviembre 2026')
+    expect(diaSemanaLunes('2026-11-02')).toBe(0) // lunes
+    expect(diaSemanaLunes('2026-11-01')).toBe(6) // domingo
+  })
+})

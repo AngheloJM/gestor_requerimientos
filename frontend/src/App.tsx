@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { RequireAuth } from '@/auth/RequireAuth'
 import { Layout } from '@/components/Layout'
+import { AlmanaquePage } from '@/pages/AlmanaquePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { MisRequerimientosPage } from '@/pages/MisRequerimientosPage'
 import { NuevoRequerimientoPage } from '@/pages/NuevoRequerimientoPage'
@@ -23,7 +24,7 @@ export default function App() {
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/roles/:id" element={<RolEditorPage />} />
             <Route path="/matriz" element={<Pendiente titulo="Matriz de servicio" hook="useMatrizServicio" />} />
-            <Route path="/almanaque" element={<Pendiente titulo="Almanaque" hook="useAlmanaque" />} />
+            <Route path="/almanaque" element={<AlmanaquePage />} />
             <Route path="/aprobaciones" element={<Pendiente titulo="Aprobaciones" hook="useAprobaciones / useEditarFechaFin" />} />
           </Route>
         </Route>
