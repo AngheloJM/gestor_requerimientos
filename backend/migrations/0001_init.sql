@@ -1,0 +1,10 @@
+-- 0001_init: baseline del schema existente en Supabase.
+--
+-- La base de producción YA tiene el schema (no se crea de cero). Este archivo debe
+-- contener el `pg_dump --schema-only --schema=public` real para poder recrear ambientes
+-- locales/CI, y en Supabase marcarse como aplicado SIN ejecutarse.
+--
+-- TODO: pegar el dump real. Hasta entonces los tests usan
+-- db/tests/fixtures/supabase_subset.sql (subconjunto de columnas, tipos aproximados).
+--
+-- Regla: cualquier migración posterior debe ser ADITIVA (nunca DROP de tablas/columnas/datos).
