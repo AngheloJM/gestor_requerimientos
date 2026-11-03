@@ -44,9 +44,10 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
       (`criterios_sin_definir` en `/tablero`).
 - [ ] **Completitud: mapeo de tareas a áreas** (contrato → Comercial, cargos → Operaciones) es un
       supuesto previo, no confirmado.
-- [ ] **Contratos con duración** (`duracion_valor`/`duracion_unidad`): falta la semántica de
-      `duracion_unidad` para calcular el fin. Hoy su vigencia es "indeterminada"
-      (tarea `verificar_vigencia_contrato`). Lo mismo si no tiene ni fecha_fin ni duración.
+- [ ] **Contratos con duración**: el trigger de producción fija `duracion_unidad` ∈ `meses` | `dias`
+      (y fin XOR duración, inicio obligatorio). TODO(negocio): confirmar el cálculo del fin
+      (¿inicio + N meses/días, inclusive?) para dejar de mostrar la vigencia como "indeterminada"
+      (tarea `verificar_vigencia_contrato`).
 - [x] **Almanaque** (2026-11-03): usa `leer_eventos_almanaque` de producción, igual que la app
       original → no filtra por estado del requerimiento; entregas/rectificaciones según
       `requerimiento_entregas.tipo`, con estado de decisión (pendiente/aceptada/rechazada);
@@ -98,6 +99,25 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
       Supabase requiere confirmación. Ver `docs/PLAN_ROLES.md` (fases 2–4 y preguntas abiertas).
 - [x] Administración de roles: solo `rrhh_admin`. Un usuario = un solo rol (decisión 2026-11-03).
 - [ ] TODO(negocio): si `estandar` ve montos (`sueldos.ver_montos`; hoy RLS se los muestra).
+
+## Matriz de Servicio (configuración)
+
+- [ ] **Pendientes de completar** (sección 10): criterio sin definir por la clienta (¿falta algún
+      cargo, alguna métrica…?). La sección muestra un aviso; no se calculó nada.
+- [ ] **Sin políticas RLS en producción** (la base impide la operación; no se agregaron):
+      - borrar `proyectos`;
+      - editar y borrar `catalogo_metricas` (solo hay alta);
+      - borrar `catalogo_bonos`.
+      Habilitarlas = agregar políticas en Supabase (decisión + confirmación).
+- [ ] **Catálogo de bonos**: catálogo simple, **sin conexión a nada** (las métricas usan
+      `metrica_id`). No se definió su uso.
+- [ ] **Logo y manual de marca del cliente**: hoy URL/texto; subir el archivo, pendiente.
+- [ ] **Composición salarial**: alta y edición de haberes implementadas; eliminar una composición
+      no fue pedido (la política de la base lo permitiría a RR.HH.).
+- [ ] **Escala de `pct_bono` y uso de `peso_pct`** en métricas: se guardan tal cual (ver
+      "Resultado mensual de métricas").
+- [ ] **Catálogos `tipos_contrato` y `modalidades`**: se usan como opciones del formulario de
+      servicios; su administración (alta/edición) no está en la pantalla.
 
 ## Usuarios
 
