@@ -1,8 +1,9 @@
 import { AlertTriangle, CheckCircle2, Layers, type LucideIcon } from 'lucide-react'
 
-import { type Area, type TarjetaKanban, useTablero } from '@/api'
+import { type Area, useTablero } from '@/api'
 import { EstadoBadge, type Tono } from '@/components/EstadoBadge'
 import { ErrorApi } from '@/components/ErrorApi'
+import { TarjetaSolicitud } from '@/components/solicitudes/TarjetaSolicitud'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
@@ -48,22 +49,6 @@ function Kpi({
         <span className="ml-1 text-base font-normal text-nova-gris">/ {de}</span>
       </p>
     </div>
-  )
-}
-
-function Tarjeta({ t }: { t: TarjetaKanban }) {
-  return (
-    <li className="rounded-lg border bg-white p-3 shadow-nova-xs transition-shadow hover:shadow-nova-md">
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-medium text-nova-titulo">{t.servicio.nombre ?? 'Servicio'}</p>
-        {t.estado && <EstadoBadge>{t.estado}</EstadoBadge>}
-      </div>
-      <p className="mt-1 text-sm text-nova-texto-2">
-        Cambio en <span className="font-medium">{t.campo}</span>
-        {t.cargo?.nombre ? ` · ${t.cargo.nombre}` : ''}
-      </p>
-      {t.motivo && <p className="mt-2 line-clamp-2 text-sm text-nova-gris">{t.motivo}</p>}
-    </li>
   )
 }
 
@@ -147,7 +132,7 @@ export function TableroPage() {
               ) : (
                 <ul className="grid gap-2">
                   {kanban[key].map((t) => (
-                    <Tarjeta key={t.id} t={t} />
+                    <TarjetaSolicitud key={t.id} t={t} />
                   ))}
                 </ul>
               )}

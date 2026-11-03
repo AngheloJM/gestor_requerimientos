@@ -100,6 +100,25 @@ export function useCrearRequerimiento() {
   })
 }
 
+/** Resolver / rechazar / cancelar una solicitud de cambio (reglas en la base). */
+export function useCerrarSolicitud() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, accion, comentario }: { id: string; accion: 'resolver' | 'rechazar' | 'cancelar'; comentario?: string }) =>
+      api.post<void>(`/solicitudes-cambio/${encodeURIComponent(id)}/cierre`, { accion, comentario: comentario || null }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.tablero }),
+  })
+}
+
+export function useCrearSolicitud() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { servicio_id: string; cargo_id: string | null; campo: string; motivo: string; descripcion: string | null }) =>
+      api.post<{ id: string }>('/solicitudes-cambio', body),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.tablero }),
+  })
+}
+
 export function useTablero() {
   return useQuery({
     queryKey: queryKeys.tablero,

@@ -1,8 +1,10 @@
 import { Info, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { type FilaMatriz, useMatrizServicio, useParametros } from '@/api'
 import { ErrorApi } from '@/components/ErrorApi'
+import { SolicitarCambio } from '@/components/solicitudes/SolicitarCambio'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatMonto } from '@/lib/format'
@@ -71,7 +73,9 @@ export function MatrizPage() {
   const parametros = useParametros()
   const [centro, setCentro] = useState('')
   const [cliente, setCliente] = useState('')
-  const [servicio, setServicio] = useState('')
+  // "Ir a corregir" del tablero llega con ?servicio=<id>.
+  const [params] = useSearchParams()
+  const [servicio, setServicio] = useState(params.get('servicio') ?? '')
   const [buscar, setBuscar] = useState('')
 
   const opciones = useMemo(() => {
@@ -151,6 +155,7 @@ export function MatrizPage() {
                 </span>
                 <span className="font-semibold text-nova-titulo">{g.servicio}</span>
                 {g.filas[0].proyecto && <span className="text-xs text-nova-gris">(proyecto {g.filas[0].proyecto.nombre})</span>}
+                <SolicitarCambio servicioId={g.filas[0].servicio.id} cargos={g.filas.map((f) => ({ id: f.cargo.id, nombre: f.cargo.nombre }))} />
               </header>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-sm">
