@@ -16,7 +16,7 @@ use crate::{
 /// Zona horaria del negocio (Bolivia, UTC-4) para decidir qué día es "hoy" (vigencia).
 const UTC_OFFSET_NEGOCIO_SEGUNDOS: i32 = -4 * 3600;
 
-fn hoy_negocio() -> NaiveDate {
+pub(crate) fn hoy_negocio() -> NaiveDate {
     let tz = FixedOffset::east_opt(UTC_OFFSET_NEGOCIO_SEGUNDOS).expect("offset válido");
     Utc::now().with_timezone(&tz).date_naive()
 }

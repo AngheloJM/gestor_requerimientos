@@ -8,6 +8,7 @@ mod error;
 mod limitador;
 mod matriz;
 mod me;
+mod parametros;
 mod passwords;
 mod requerimientos;
 mod roles;
@@ -114,6 +115,10 @@ fn protected_routes(state: AppState) -> Router<AppState> {
             get(requerimientos::listar).post(requerimientos::crear),
         )
         .route("/requerimientos/opciones", get(requerimientos::opciones))
+        .route(
+            "/parametros-salariales",
+            get(parametros::listar).post(parametros::registrar),
+        )
         .route("/usuarios", get(usuarios::listar))
         .route("/usuarios/opciones", get(usuarios::opciones))
         .route("/usuarios/{id}", put(usuarios::actualizar))
