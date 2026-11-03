@@ -1,2 +1,5 @@
 .env
 .credenciales-dev
+
+# Datos de demostración con nombres reales del cliente: solo local, no publicar
+demo-local.sql
