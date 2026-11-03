@@ -1,9 +1,8 @@
-import type { Session } from '@supabase/supabase-js'
 import { createContext, use } from 'react'
 
 export interface AuthState {
-  session: Session | null
-  /** true mientras se recupera la sesión persistida al cargar la app. */
+  autenticado: boolean
+  /** true mientras se intenta recuperar la sesión (cookie de refresh) al cargar la app. */
   cargando: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
