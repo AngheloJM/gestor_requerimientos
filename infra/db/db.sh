@@ -48,7 +48,7 @@ case "${1:-}" in
       for f in "${reales[@]}"; do echo "  $f"; psql_in -q < "$f"; done
     else
       echo "schema/ vacío → cargando fixtures APROXIMADOS (tipos y RLS de prueba, no los de prod)"
-      for f in supabase_subset rls_test datos p2_edicion p2_creacion; do echo "  $f.sql"; psql_in -q < "$FIXTURES/$f.sql"; done
+      for f in supabase_subset rls_test datos p2_edicion p2_creacion p2_almanaque; do echo "  $f.sql"; psql_in -q < "$FIXTURES/$f.sql"; done
     fi
     # Migraciones propias (aditivas), en orden. 0001 es la baseline (solo comentarios hoy).
     for f in ../../backend/migrations/*.sql; do echo "  migración $(basename "$f")"; psql_in -q < "$f"; done
