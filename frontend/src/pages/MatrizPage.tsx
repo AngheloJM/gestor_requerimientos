@@ -1,5 +1,5 @@
 import { Info, Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { type FilaMatriz, useMatrizServicio, useParametros } from '@/api'
@@ -10,33 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatMonto } from '@/lib/format'
 import { SALARIO_MINIMO_NACIONAL, formatParametro } from '@/lib/parametros'
 
-/** Orden obligatorio (decisión de negocio): Centro de Costo → Cliente → Servicio → Cargo. */
-interface GrupoServicio {
-  clave: string
-  centro: string
-  cliente: string
-  servicio: string
-  filas: FilaMatriz[]
-}
-
+/** Orden obligatorio de columnas (decisión de negocio): Centro de Costo → Cliente → Servicio → Cargo. */
 const centroTexto = (f: FilaMatriz) =>
   f.centro_costo ? `${f.centro_costo.codigo} · ${f.centro_costo.nombre}` : 'Sin centro de costo'
 const servicioTexto = (f: FilaMatriz) => (f.servicio.codigo ? `${f.servicio.codigo} · ${f.servicio.nombre}` : f.servicio.nombre)
-
-function agrupar(filas: FilaMatriz[]): GrupoServicio[] {
-  // La API ya devuelve el orden CC → Cliente → Servicio → Cargo; se agrupa respetándolo.
-  const grupos: GrupoServicio[] = []
-  for (const f of filas) {
-    const clave = `${f.centro_costo?.id ?? '-'}|${f.cliente?.id ?? '-'}|${f.servicio.id}`
-    let g = grupos[grupos.length - 1]
-    if (!g || g.clave !== clave) {
-      g = { clave, centro: centroTexto(f), cliente: f.cliente?.nombre ?? 'Sin cliente', servicio: servicioTexto(f), filas: [] }
-      grupos.push(g)
-    }
-    g.filas.push(f)
-  }
-  return grupos
-}
 
 const bs = (m: string | null) => (m == null ? '—' : `Bs ${formatMonto(m)}`)
 
@@ -98,7 +75,10 @@ export function MatrizPage() {
         [centroTexto(f), f.cliente?.nombre, f.proyecto?.nombre, servicioTexto(f), f.cargo.nombre].some((v) => v?.toLowerCase().includes(q)))
     )
   })
-  const grupos = agrupar(filtradas)
+  const [solicitando, setSolicitando] = useState<string | null>(null)
+  const [enviada, setEnviada] = useState<string | null>(null)
+  const cargosDe = (servicioId: string) =>
+    (data ?? []).filter((x) => x.servicio.id === servicioId).map((x) => ({ id: x.cargo.id, nombre: x.cargo.nombre }))
   const smn = parametros.data?.vigentes.find((v) => v.parametro === SALARIO_MINIMO_NACIONAL)
 
   return (
@@ -138,64 +118,89 @@ export function MatrizPage() {
         <ErrorApi error={error} />
       ) : isPending ? (
         <Skeleton className="h-64 rounded-xl" />
-      ) : grupos.length === 0 ? (
+      ) : filtradas.length === 0 ? (
         <div className="rounded-xl border border-dashed bg-card p-10 text-center text-sm text-nova-gris">Sin resultados.</div>
       ) : (
-        <div className="grid gap-4">
-          {grupos.map((g) => (
-            <section key={g.clave} className="overflow-hidden rounded-xl border bg-card shadow-nova-sm">
-              <header className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b bg-nova-hielo/50 px-4 py-3 text-sm">
-                <span className="text-nova-gris">{g.centro}</span>
-                <span className="text-nova-gris" aria-hidden>
-                  →
-                </span>
-                <span className="text-nova-texto-2">{g.cliente}</span>
-                <span className="text-nova-gris" aria-hidden>
-                  →
-                </span>
-                <span className="font-semibold text-nova-titulo">{g.servicio}</span>
-                {g.filas[0].proyecto && <span className="text-xs text-nova-gris">(proyecto {g.filas[0].proyecto.nombre})</span>}
-                <SolicitarCambio servicioId={g.filas[0].servicio.id} cargos={g.filas.map((f) => ({ id: f.cargo.id, nombre: f.cargo.nombre }))} />
-              </header>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-sm">
-                  <thead className="text-left text-xs tracking-wide text-nova-gris uppercase">
+        // Una sola tabla continua (tipo planilla): una fila por registro de servicio_cargos.
+        <div className="max-h-[70vh] overflow-auto rounded-xl border bg-card shadow-nova-sm">
+          <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-sm">
+            <thead className="sticky top-0 z-10 bg-nova-hielo text-left text-xs tracking-wide text-nova-gris uppercase">
+              <tr>
+                {['Centro de costo', 'Cliente', 'Servicio', 'Cargo', 'Proyecto'].map((h) => (
+                  <th key={h} className="border-b px-3 py-2.5 font-medium whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+                <th className="border-b px-3 py-2.5 text-right font-medium whitespace-nowrap">Haber diurno</th>
+                <th className="border-b px-3 py-2.5 text-right font-medium whitespace-nowrap">Haber nocturno</th>
+                <th className="border-b px-3 py-2.5 font-medium whitespace-nowrap">Bonos configurados</th>
+                <th className="border-b px-3 py-2.5 text-right font-medium whitespace-nowrap">Total ganado</th>
+                <th className="border-b px-3 py-2.5" aria-label="Acciones" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtradas.map((f) => (
+                <Fragment key={f.servicio_cargo_id}>
+                  <tr className="align-top hover:bg-nova-hielo/30">
+                    <td className="border-b px-3 py-2 whitespace-nowrap text-nova-texto-2">{centroTexto(f)}</td>
+                    <td className="border-b px-3 py-2 whitespace-nowrap">{f.cliente?.nombre ?? '—'}</td>
+                    <td className="border-b px-3 py-2 whitespace-nowrap">{servicioTexto(f)}</td>
+                    <td className="border-b px-3 py-2 font-medium whitespace-nowrap text-nova-titulo">{f.cargo.nombre}</td>
+                    <td className="border-b px-3 py-2 whitespace-nowrap text-nova-texto-2">{f.proyecto?.nombre ?? '—'}</td>
+                    <td className="border-b px-3 py-2 text-right whitespace-nowrap tabular-nums">{bs(f.haber_basico_diurno)}</td>
+                    <td className="border-b px-3 py-2 text-right whitespace-nowrap tabular-nums">{bs(f.haber_basico_nocturno)}</td>
+                    <td className="border-b px-3 py-2">
+                      {f.metricas.length === 0 ? (
+                        <span className="text-nova-gris">—</span>
+                      ) : (
+                        <ul className="grid gap-0.5">
+                          {f.metricas.map((m) => (
+                            <li key={m.id} className="flex justify-between gap-3 whitespace-nowrap">
+                              <span>{m.nombre}</span>
+                              <span className="tabular-nums text-nova-texto-2">{bs(m.monto_bono)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                    <td className="border-b px-3 py-2 text-right font-semibold whitespace-nowrap tabular-nums text-nova-azul">{bs(f.total_ganado)}</td>
+                    <td className="border-b px-3 py-2 text-right whitespace-nowrap">
+                      {enviada === f.servicio_cargo_id && (
+                        <span className="mr-2 text-xs text-exito" role="status">
+                          Solicitud enviada
+                        </span>
+                      )}
+                      <SolicitarCambio
+                        servicioId={f.servicio.id}
+                        cargos={cargosDe(f.servicio.id)}
+                        abierto={solicitando === f.servicio_cargo_id}
+                        onAbrir={() => setSolicitando(f.servicio_cargo_id)}
+                        onCerrar={() => setSolicitando(null)}
+                        soloBoton
+                      />
+                    </td>
+                  </tr>
+                  {solicitando === f.servicio_cargo_id && (
                     <tr>
-                      <th className="px-4 py-2 font-medium">Cargo</th>
-                      <th className="px-4 py-2 text-right font-medium">Haber diurno</th>
-                      <th className="px-4 py-2 text-right font-medium">Haber nocturno</th>
-                      <th className="px-4 py-2 font-medium">Bonos configurados</th>
-                      <th className="px-4 py-2 text-right font-medium">Total ganado</th>
+                      <td colSpan={10} className="border-b bg-nova-hielo/30 px-3 py-2">
+                        <p className="text-xs text-nova-gris">
+                          Solicitar cambio · {servicioTexto(f)} · {f.cargo.nombre}
+                        </p>
+                        <SolicitarCambio
+                          servicioId={f.servicio.id}
+                          cargos={cargosDe(f.servicio.id)}
+                          cargoInicial={f.cargo.id}
+                          abierto
+                          onCerrar={() => setSolicitando(null)}
+                          onEnviada={() => setEnviada(f.servicio_cargo_id)}
+                        />
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {g.filas.map((f) => (
-                      <tr key={f.servicio_cargo_id} className="align-top hover:bg-nova-hielo/30">
-                        <td className="px-4 py-2.5 font-medium text-nova-titulo">{f.cargo.nombre}</td>
-                        <td className="px-4 py-2.5 text-right tabular-nums">{bs(f.haber_basico_diurno)}</td>
-                        <td className="px-4 py-2.5 text-right tabular-nums">{bs(f.haber_basico_nocturno)}</td>
-                        <td className="px-4 py-2.5">
-                          {f.metricas.length === 0 ? (
-                            <span className="text-nova-gris">—</span>
-                          ) : (
-                            <ul className="grid gap-0.5">
-                              {f.metricas.map((m) => (
-                                <li key={m.id} className="flex justify-between gap-3">
-                                  <span>{m.nombre}</span>
-                                  <span className="tabular-nums text-nova-texto-2">{bs(m.monto_bono)}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-nova-azul">{bs(f.total_ganado)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ))}
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

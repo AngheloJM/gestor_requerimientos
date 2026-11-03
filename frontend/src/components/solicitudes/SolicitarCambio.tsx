@@ -6,12 +6,41 @@ import { ErrorApi } from '@/components/ErrorApi'
 import { Button } from '@/components/ui/button'
 import { CAMPOS_CON_CARGO, CAMPOS_SOLICITUD } from '@/lib/solicitudes'
 
-/** Formulario compacto para pedir un cambio sobre un servicio (lo resuelve el área responsable). */
-export function SolicitarCambio({ servicioId, cargos }: { servicioId: string; cargos: { id: string; nombre: string }[] }) {
+/**
+ * Formulario compacto para pedir un cambio sobre un servicio (lo resuelve el área responsable).
+ * Puede usarse solo (maneja su estado) o controlado desde afuera (`abierto`/`onAbrir`/`onCerrar`),
+ * p. ej. el botón en una celda y el formulario en una fila extendida (`soloBoton`).
+ */
+export function SolicitarCambio({
+  servicioId,
+  cargos,
+  cargoInicial,
+  abierto: abiertoExterno,
+  onAbrir,
+  onCerrar,
+  soloBoton,
+  onEnviada,
+}: {
+  servicioId: string
+  cargos: { id: string; nombre: string }[]
+  cargoInicial?: string
+  abierto?: boolean
+  onAbrir?: () => void
+  onCerrar?: () => void
+  soloBoton?: boolean
+  /** Se llama al crear la solicitud (útil en modo controlado). */
+  onEnviada?: () => void
+}) {
   const crear = useCrearSolicitud()
-  const [abierto, setAbierto] = useState(false)
+  const [abiertoInterno, setAbiertoInterno] = useState(false)
+  const abierto = abiertoExterno ?? abiertoInterno
+  const setAbierto = (v: boolean) => {
+    if (abiertoExterno === undefined) setAbiertoInterno(v)
+    if (v) onAbrir?.()
+    else onCerrar?.()
+  }
   const [campo, setCampo] = useState('')
-  const [cargo, setCargo] = useState('')
+  const [cargo, setCargo] = useState(cargoInicial ?? '')
   const [motivo, setMotivo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [error, setError] = useState<string>()
@@ -29,6 +58,7 @@ export function SolicitarCambio({ servicioId, cargos }: { servicioId: string; ca
       {
         onSuccess: () => {
           setOk(true)
+          onEnviada?.()
           setAbierto(false)
           setCampo('')
           setCargo('')
@@ -39,7 +69,7 @@ export function SolicitarCambio({ servicioId, cargos }: { servicioId: string; ca
     )
   }
 
-  if (!abierto) {
+  if (!abierto || soloBoton) {
     return (
       <span className="ml-auto flex items-center gap-2">
         {ok && (
@@ -47,7 +77,16 @@ export function SolicitarCambio({ servicioId, cargos }: { servicioId: string; ca
             <CheckCircle2 className="size-3.5" aria-hidden /> Solicitud enviada
           </span>
         )}
-        <Button type="button" size="sm" variant="outline" onClick={() => (setAbierto(true), setOk(false))}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          aria-expanded={abierto}
+          onClick={() => {
+            setAbierto(!abierto)
+            setOk(false)
+          }}
+        >
           <MessageSquarePlus aria-hidden /> Solicitar cambio
         </Button>
       </span>
