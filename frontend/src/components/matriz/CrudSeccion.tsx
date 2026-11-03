@@ -5,6 +5,7 @@ import { type RecursoConfig, useConfigEliminar, useConfigGuardar } from '@/api'
 import { ErrorApi } from '@/components/ErrorApi'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,8 @@ export interface Campo {
   tipo: 'texto' | 'textarea' | 'numero' | 'fecha' | 'select' | 'multiselect' | 'switch'
   /** Opciones [valor, texto]; pueden depender de otros campos (ej. proyecto según cliente). */
   opciones?: (v: Valores) => [string, string][]
+  /** Solo `select`: agrega "Otro…" para escribir un valor fuera de la lista. */
+  otro?: boolean
   requerido?: boolean
   ayuda?: string
   /** Deshabilita (y vacía al enviar, si corresponde) según otros campos. */
@@ -36,6 +39,61 @@ export interface Columna<T> {
 const entrada =
   'h-9 w-full rounded-lg border border-input bg-white px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-muted disabled:opacity-60'
 
+const OTRO = '__otro__'
+
+/** Desplegable; con `otro`, permite escribir un valor fuera de la lista. */
+function Desplegable({
+  c,
+  v,
+  set,
+  id,
+  deshabilitado,
+}: {
+  c: Campo
+  v: Valores
+  set: (nombre: string, valor: Valor) => void
+  id: string
+  deshabilitado: boolean
+}) {
+  const opciones = c.opciones?.(v) ?? []
+  const valor = (v[c.nombre] as string) ?? ''
+  const fueraDeLista = valor !== '' && !opciones.some(([o]) => o === valor)
+  const [escribiendo, setEscribiendo] = useState(fueraDeLista)
+  return (
+    <div className="flex gap-2">
+      <select
+        id={id}
+        className={entrada}
+        disabled={deshabilitado}
+        value={escribiendo ? OTRO : valor}
+        onChange={(e) => {
+          const nuevo = e.target.value
+          setEscribiendo(nuevo === OTRO)
+          set(c.nombre, nuevo === OTRO ? '' : nuevo)
+        }}
+      >
+        <option value="">{c.requerido ? 'Elegí…' : 'Sin asignar'}</option>
+        {opciones.map(([val, txt]) => (
+          <option key={val} value={val}>
+            {txt}
+          </option>
+        ))}
+        {c.otro && <option value={OTRO}>Otro…</option>}
+      </select>
+      {c.otro && escribiendo && (
+        <Input
+          aria-label={`${c.etiqueta} (otro)`}
+          className="h-9 bg-white"
+          autoFocus
+          disabled={deshabilitado}
+          value={valor}
+          onChange={(e) => set(c.nombre, e.target.value)}
+        />
+      )}
+    </div>
+  )
+}
+
 function Control({ c, v, set }: { c: Campo; v: Valores; set: (nombre: string, valor: Valor) => void }) {
   const id = `campo-${c.nombre}`
   const deshabilitado = c.deshabilitado?.(v) ?? false
@@ -46,16 +104,7 @@ function Control({ c, v, set }: { c: Campo; v: Valores; set: (nombre: string, va
         <textarea id={id} rows={3} className={cn(entrada, 'h-auto py-2')} disabled={deshabilitado} value={valor as string} onChange={(e) => set(c.nombre, e.target.value)} />
       )
     case 'select':
-      return (
-        <select id={id} className={entrada} disabled={deshabilitado} value={valor as string} onChange={(e) => set(c.nombre, e.target.value)}>
-          <option value="">{c.requerido ? 'Elegí…' : 'Sin asignar'}</option>
-          {(c.opciones?.(v) ?? []).map(([val, txt]) => (
-            <option key={val} value={val}>
-              {txt}
-            </option>
-          ))}
-        </select>
-      )
+      return <Desplegable c={c} v={v} set={set} id={id} deshabilitado={deshabilitado} />
     case 'multiselect': {
       const sel = new Set(valor as string[])
       return (
@@ -89,10 +138,10 @@ function Control({ c, v, set }: { c: Campo; v: Valores; set: (nombre: string, va
     }
     case 'switch':
       return (
-        <label className="flex h-9 items-center gap-2 text-sm">
-          <input id={id} type="checkbox" className="size-4 accent-nova-azul" disabled={deshabilitado} checked={valor as boolean} onChange={(e) => set(c.nombre, e.target.checked)} />
-          {valor ? 'Sí' : 'No'}
-        </label>
+        <span className="flex h-9 items-center gap-2 text-sm">
+          <Switch id={id} checked={valor as boolean} disabled={deshabilitado} onChange={(b) => set(c.nombre, b)} />
+          <span className={valor ? 'font-medium text-nova-azul' : 'text-nova-gris'}>{valor ? 'Sí' : 'No'}</span>
+        </span>
       )
     default:
       return (
