@@ -22,6 +22,8 @@ pub enum ApiError {
     NotFound,
     BadRequest(String),
     Unprocessable(String),
+    /// Conflicto de concurrencia (la versión enviada está desactualizada).
+    Conflict(String),
     /// El detalle se registra en el log, nunca se envía al cliente.
     Internal(String),
 }
@@ -46,6 +48,7 @@ impl IntoResponse for ApiError {
                 "validation_error",
                 Some(d),
             ),
+            Self::Conflict(d) => (StatusCode::CONFLICT, "conflict", Some(d)),
             Self::Internal(d) => {
                 tracing::error!(error = %d, "error interno");
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", None)

@@ -30,6 +30,9 @@ pub struct Aprobacion {
     /// Editable por RR.HH. (`requerimientos.fecha_fin`).
     pub fecha_fin: Option<NaiveDate>,
     pub ultima_modificacion: Option<Modificacion>,
+    /// `requerimientos.updated_at`: versión para el control de concurrencia de
+    /// `editar_requerimiento_con_historial` (el cliente la devuelve al editar).
+    pub version: DateTime<Utc>,
 }
 
 /// Fila de `requerimiento_historial`.

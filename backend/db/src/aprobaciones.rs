@@ -1,26 +1,24 @@
 //! Aprobaciones sobre `requerimientos` (fecha_inicio, fecha_fin editable, cantidad_personas)
-//! con trazabilidad en `requerimiento_historial` (tabla existente; no se crea ninguna).
+//! con trazabilidad en `requerimiento_historial`.
 //!
-//! Autorización: RLS. Si el usuario no puede ver el requerimiento → `NoEncontrado`; si lo ve
-//! pero RLS no le permite modificarlo o escribir el historial → `SinPermiso`.
+//! La edición se delega a la función de producción `editar_requerimiento_con_historial`
+//! (verificada en la base real): exige glosa (3–2000), valida la categoría de desvío, controla
+//! la concurrencia con `updated_at` y los triggers `proteger_campos_requerimiento` /
+//! `p2_auditar_requerimiento` escriben el historial (una fila por campo cambiado).
+//! Aquí NO se inserta en el historial: se duplicaría.
 //!
-//! TODO(verificar en la base): si ya existe un trigger que escriba `requerimiento_historial`
-//! al actualizar `requerimientos`, el INSERT explícito de aquí duplicaría la fila.
-//! TODO(verificar): formato con que Lovable guarda fechas en `valor_anterior`/`valor_nuevo`
-//! (aquí: ISO `YYYY-MM-DD`).
+//! Autorización: RLS + `p2_acceso`. Si el usuario no puede ver el requerimiento →
+//! `NoEncontrado`; si lo ve pero no puede editarlo → `SinPermiso`.
 
 use chrono::{DateTime, NaiveDate, Utc};
 use domain::{
-    Aprobacion, DomainError, EntradaHistorial, Modificacion, RequerimientoId, UsuarioId,
+    Aprobacion, DomainError, EntradaHistorial, Modificacion, RequerimientoId,
     aprobaciones::validar_fecha_fin,
 };
 use sqlx::{FromRow, PgConnection};
 use uuid::Uuid;
 
 use crate::{DbError, cantidad_desde_db};
-
-/// Nombre de la columna editada, registrado en `requerimiento_historial.campo`.
-const CAMPO_FECHA_FIN: &str = "fecha_fin";
 
 /// $1 = id opcional (NULL = todos). Solo servicios activos (o requerimientos sin servicio).
 const QUERY_APROBACIONES: &str = r#"
@@ -38,6 +36,7 @@ SELECT
     r.fecha_inicio::date           AS fecha_inicio,
     r.fecha_fin_tentativa::date    AS fecha_fin_tentativa,
     r.fecha_fin::date              AS fecha_fin,
+    r.updated_at::timestamptz      AS version,
     h.usuario_id                   AS modificado_por,
     h.created_at                   AS modificado_en
 FROM requerimientos r
@@ -83,6 +82,7 @@ struct AprobacionRow {
     fecha_fin: Option<NaiveDate>,
     modificado_por: Option<Uuid>,
     modificado_en: Option<DateTime<Utc>>,
+    version: DateTime<Utc>,
 }
 
 impl TryFrom<AprobacionRow> for Aprobacion {
@@ -110,6 +110,7 @@ impl TryFrom<AprobacionRow> for Aprobacion {
                 usuario_id: r.modificado_por.map(Into::into),
                 fecha,
             }),
+            version: r.version,
         })
     }
 }
@@ -182,96 +183,97 @@ pub async fn historial(
     ))
 }
 
+/// SQLSTATE de `RAISE EXCEPTION` (reglas de negocio de las funciones/triggers de la base).
+const SQLSTATE_RAISE_EXCEPTION: &str = "P0001";
+
 #[derive(Debug)]
 pub enum ActualizarError {
     /// No existe o RLS no permite verlo.
     NoEncontrado,
-    /// Visible pero RLS no permite modificarlo / registrar el historial.
+    /// Visible pero sin acceso de edición (`p2_acceso`) o RLS lo rechazó.
     SinPermiso,
+    /// El requerimiento cambió desde que el cliente lo leyó (`version` desactualizada).
+    Conflicto,
     Validacion(DomainError),
+    /// Regla de negocio rechazada por la base (mensaje de `RAISE EXCEPTION`, apto para el usuario).
+    Regla(String),
     Db(DbError),
 }
 
 impl From<sqlx::Error> for ActualizarError {
     fn from(e: sqlx::Error) -> Self {
-        let e = DbError::Sqlx(e);
-        if e.es_permiso_denegado() {
-            Self::SinPermiso
-        } else {
-            Self::Db(e)
-        }
+        DbError::Sqlx(e).into()
     }
 }
 
 impl From<DbError> for ActualizarError {
     fn from(e: DbError) -> Self {
         if e.es_permiso_denegado() {
-            Self::SinPermiso
-        } else {
-            Self::Db(e)
+            return Self::SinPermiso;
         }
+        if let DbError::Sqlx(sqlx::Error::Database(d)) = &e
+            && d.code().as_deref() == Some(SQLSTATE_RAISE_EXCEPTION)
+        {
+            let msg = d.message();
+            return if msg.starts_with("Sin acceso") {
+                Self::SinPermiso
+            } else if msg.starts_with("El requerimiento cambió") {
+                Self::Conflicto
+            } else {
+                Self::Regla(msg.to_owned())
+            };
+        }
+        Self::Db(e)
     }
 }
 
-/// Edita `fecha_fin` y registra la fila en `requerimiento_historial`, dentro de la
-/// transacción del request (el llamador hace commit). Bloquea la fila para serializar
-/// ediciones concurrentes. Si el valor no cambia, no escribe nada.
+/// Datos de una edición de `fecha_fin`.
+#[derive(Debug, Clone, Copy)]
+pub struct EdicionFechaFin<'a> {
+    pub nueva: Option<NaiveDate>,
+    /// `updated_at` que el cliente leyó (`Aprobacion::version`).
+    pub version: DateTime<Utc>,
+    /// Obligatoria (3–2000 caracteres; lo valida la base).
+    pub glosa: &'a str,
+    /// TODO(negocio): cuándo corresponde informar un desvío. Valores admitidos por la base:
+    /// falla_capacitacion, rechazo_operaciones, ratio_reclutamiento, cambio_cliente.
+    pub categoria_desvio: Option<&'a str>,
+    pub detalle_desvio: Option<&'a str>,
+}
+
+/// Edita `fecha_fin` vía `editar_requerimiento_con_historial`, dentro de la transacción del
+/// request (el llamador hace commit). Si el valor no cambia, no escribe nada (la base
+/// rechazaría "No hay cambios para guardar").
 pub async fn actualizar_fecha_fin(
     conn: &mut PgConnection,
     id: RequerimientoId,
-    nueva: Option<NaiveDate>,
-    usuario: UsuarioId,
-    glosa: Option<&str>,
+    e: EdicionFechaFin<'_>,
 ) -> Result<Aprobacion, ActualizarError> {
     let uid = Uuid::from(id);
 
-    // 1. ¿Lo puede ver? (política SELECT)
     let visible: Option<(NaiveDate, Option<NaiveDate>)> = sqlx::query_as(
         "SELECT fecha_inicio::date, fecha_fin::date FROM requerimientos WHERE id = $1",
     )
     .bind(uid)
     .fetch_optional(&mut *conn)
     .await?;
-    if visible.is_none() {
+    let Some((fecha_inicio, anterior)) = visible else {
         return Err(ActualizarError::NoEncontrado);
-    }
-
-    // 2. Bloqueo: FOR UPDATE solo devuelve filas que además pasan las políticas UPDATE.
-    let bloqueada: Option<(NaiveDate, Option<NaiveDate>)> = sqlx::query_as(
-        "SELECT fecha_inicio::date, fecha_fin::date FROM requerimientos WHERE id = $1 FOR UPDATE",
-    )
-    .bind(uid)
-    .fetch_optional(&mut *conn)
-    .await?;
-    let Some((fecha_inicio, anterior)) = bloqueada else {
-        return Err(ActualizarError::SinPermiso);
     };
 
-    validar_fecha_fin(fecha_inicio, nueva).map_err(ActualizarError::Validacion)?;
+    validar_fecha_fin(fecha_inicio, e.nueva).map_err(ActualizarError::Validacion)?;
 
-    if anterior != nueva {
-        let res = sqlx::query(
-            "UPDATE requerimientos SET fecha_fin = $2, updated_at = now() WHERE id = $1",
-        )
-        .bind(uid)
-        .bind(nueva)
-        .execute(&mut *conn)
-        .await?;
-        if res.rows_affected() != 1 {
-            return Err(ActualizarError::SinPermiso);
-        }
-
+    if anterior != e.nueva {
         sqlx::query(
-            "INSERT INTO requerimiento_historial \
-             (requerimiento_id, campo, valor_anterior, valor_nuevo, usuario_id, glosa) \
-             VALUES ($1, $2, $3, $4, $5, $6)",
+            "SELECT public.editar_requerimiento_con_historial(\
+                 $1, jsonb_build_object('fecha_fin', $2::text), $3, $4, $5, $6)",
         )
         .bind(uid)
-        .bind(CAMPO_FECHA_FIN)
-        .bind(anterior.map(|f| f.to_string()))
-        .bind(nueva.map(|f| f.to_string()))
-        .bind(Uuid::from(usuario))
-        .bind(glosa)
+        .bind(e.nueva.map(|f| f.format("%Y-%m-%d").to_string()))
+        .bind(e.version)
+        .bind(e.glosa)
+        .bind(e.categoria_desvio)
+        .bind(e.detalle_desvio)
         .execute(&mut *conn)
         .await?;
     }

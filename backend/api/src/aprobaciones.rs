@@ -1,6 +1,7 @@
 //! Aprobaciones (autorización: RLS):
 //!   GET   /aprobaciones
-//!   PATCH /aprobaciones/{id}            body: {"fecha_fin": "YYYY-MM-DD" | null, "glosa"?: "..."}
+//!   PATCH /aprobaciones/{id}            body: {"fecha_fin": "YYYY-MM-DD" | null, "version": "<de GET>",
+//!                                              "glosa": "...", "categoria_desvio"?, "detalle_desvio"?}
 //!   GET   /aprobaciones/{id}/historial  (requerimiento_historial completo)
 
 use axum::{
@@ -8,7 +9,10 @@ use axum::{
     extract::{Path, State},
 };
 use chrono::NaiveDate;
-use db::{PgPool, aprobaciones::ActualizarError};
+use db::{
+    PgPool,
+    aprobaciones::{ActualizarError, EdicionFechaFin},
+};
 use domain::{Aprobacion, EntradaHistorial};
 use serde::{Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
@@ -44,6 +48,8 @@ pub struct AprobacionDto {
     pub fecha_fin_tentativa: Option<NaiveDate>,
     pub fecha_fin: Option<NaiveDate>,
     pub ultima_modificacion: Option<ModificacionDto>,
+    /// `updated_at` con precisión completa (microsegundos): devolverla tal cual en el PATCH.
+    pub version: String,
 }
 
 impl From<Aprobacion> for AprobacionDto {
@@ -64,6 +70,9 @@ impl From<Aprobacion> for AprobacionDto {
                 usuario_id: m.usuario_id.map(Into::into),
                 fecha: rfc3339(m.fecha),
             }),
+            version: a
+                .version
+                .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true),
         }
     }
 }
@@ -100,13 +109,16 @@ impl From<EntradaHistorial> for HistorialDto {
 }
 
 /// `fecha_fin` debe venir explícitamente: ausente → 400; `null` → quitar la fecha.
-/// TODO(negocio): uso de `grupo_edicion`, `categoria_desvio`, `detalle_desvio` del historial.
+/// `version` y `glosa` son obligatorias (las exige `editar_requerimiento_con_historial`).
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PatchAprobacion {
     #[serde(default, deserialize_with = "presente")]
     pub fecha_fin: Option<Option<NaiveDate>>,
-    pub glosa: Option<String>,
+    pub version: chrono::DateTime<chrono::Utc>,
+    pub glosa: String,
+    pub categoria_desvio: Option<String>,
+    pub detalle_desvio: Option<String>,
 }
 
 /// Distingue "campo ausente" (None) de "campo = null" (Some(None)).
@@ -148,27 +160,27 @@ pub async fn editar_fecha_fin(
     let nueva = body.fecha_fin.ok_or_else(|| {
         ApiError::BadRequest("falta el campo `fecha_fin` (usar null para quitarla)".into())
     })?;
-    let glosa = body
-        .glosa
-        .as_deref()
-        .map(str::trim)
-        .filter(|g| !g.is_empty());
+    let edicion = EdicionFechaFin {
+        nueva,
+        version: body.version,
+        glosa: &body.glosa,
+        categoria_desvio: body.categoria_desvio.as_deref(),
+        detalle_desvio: body.detalle_desvio.as_deref(),
+    };
 
     let mut tx = tx_usuario(&pool, &user).await?;
-    let a = db::aprobaciones::actualizar_fecha_fin(
-        &mut tx,
-        id.into(),
-        nueva,
-        user.user_id.into(),
-        glosa,
-    )
-    .await
-    .map_err(|e| match e {
-        ActualizarError::NoEncontrado => ApiError::NotFound,
-        ActualizarError::SinPermiso => ApiError::Forbidden,
-        ActualizarError::Validacion(e) => ApiError::Unprocessable(e.to_string()),
-        ActualizarError::Db(e) => e.into(),
-    })?;
+    let a = db::aprobaciones::actualizar_fecha_fin(&mut tx, id.into(), edicion)
+        .await
+        .map_err(|e| match e {
+            ActualizarError::NoEncontrado => ApiError::NotFound,
+            ActualizarError::SinPermiso => ApiError::Forbidden,
+            ActualizarError::Conflicto => ApiError::Conflict(
+                "el requerimiento cambió; volver a cargarlo antes de guardar".into(),
+            ),
+            ActualizarError::Validacion(e) => ApiError::Unprocessable(e.to_string()),
+            ActualizarError::Regla(m) => ApiError::Unprocessable(m),
+            ActualizarError::Db(e) => e.into(),
+        })?;
     tx.commit().await?;
 
     tracing::info!(requerimiento_id = %id, usuario_id = %user.user_id, fecha_fin = ?nueva, "fecha_fin editada");
@@ -183,17 +195,32 @@ mod tests {
         serde_json::from_str(s)
     }
 
+    const V: &str = r#""version":"2026-11-03T12:00:00.123456Z","glosa":"extensión""#;
+
     #[test]
     fn body_distingue_ausente_null_y_fecha() {
-        assert_eq!(parse("{}").unwrap().fecha_fin, None);
+        assert_eq!(parse(&format!("{{{V}}}")).unwrap().fecha_fin, None);
         assert_eq!(
-            parse(r#"{"fecha_fin":null}"#).unwrap().fecha_fin,
+            parse(&format!(r#"{{"fecha_fin":null,{V}}}"#))
+                .unwrap()
+                .fecha_fin,
             Some(None)
         );
-        let p = parse(r#"{"fecha_fin":"2026-12-31","glosa":"extensión"}"#).unwrap();
+        let p = parse(&format!(r#"{{"fecha_fin":"2026-12-31",{V}}}"#)).unwrap();
         assert_eq!(p.fecha_fin, Some(NaiveDate::from_ymd_opt(2026, 12, 31)));
-        assert_eq!(p.glosa.as_deref(), Some("extensión"));
-        assert!(parse(r#"{"fecha_fin":"31/12/2026"}"#).is_err());
-        assert!(parse(r#"{"fecha_fin":null,"cantidad":9}"#).is_err());
+        assert_eq!(p.glosa, "extensión");
+        assert_eq!(
+            p.version.timestamp_subsec_micros(),
+            123_456,
+            "sin perder precisión"
+        );
+        assert!(parse(&format!(r#"{{"fecha_fin":"31/12/2026",{V}}}"#)).is_err());
+        assert!(parse(&format!(r#"{{"fecha_fin":null,"cantidad":9,{V}}}"#)).is_err());
+    }
+
+    #[test]
+    fn body_exige_version_y_glosa() {
+        assert!(parse(r#"{"fecha_fin":null,"glosa":"motivo"}"#).is_err());
+        assert!(parse(r#"{"fecha_fin":null,"version":"2026-11-03T12:00:00Z"}"#).is_err());
     }
 }
