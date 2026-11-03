@@ -18,6 +18,7 @@ pub mod parametros;
 pub mod requerimientos;
 pub mod rls;
 pub mod roles;
+pub mod solicitudes;
 pub mod tablero;
 pub mod usuarios;
 
