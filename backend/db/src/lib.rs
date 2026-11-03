@@ -16,6 +16,7 @@ pub mod auth;
 pub mod matriz;
 pub mod requerimientos;
 pub mod rls;
+pub mod roles;
 pub mod tablero;
 pub mod usuarios;
 
@@ -30,6 +31,9 @@ const SQLSTATE_PERMISO_DENEGADO: &str = "42501";
 /// mostrarse al usuario.
 const SQLSTATE_RAISE_EXCEPTION: &str = "P0001";
 
+/// SQLSTATE `unique_violation`.
+const SQLSTATE_DUPLICADO: &str = "23505";
+
 #[derive(Debug)]
 pub enum DbError {
     Sqlx(sqlx::Error),
@@ -42,6 +46,12 @@ impl DbError {
     pub fn es_permiso_denegado(&self) -> bool {
         matches!(self, Self::Sqlx(sqlx::Error::Database(e))
             if e.code().as_deref() == Some(SQLSTATE_PERMISO_DENEGADO))
+    }
+
+    /// `true` si se violó una restricción UNIQUE.
+    pub fn es_duplicado(&self) -> bool {
+        matches!(self, Self::Sqlx(sqlx::Error::Database(e))
+            if e.code().as_deref() == Some(SQLSTATE_DUPLICADO))
     }
 
     /// Mensaje de una regla de negocio rechazada por la base (`RAISE EXCEPTION`), si lo es.
