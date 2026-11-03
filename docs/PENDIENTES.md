@@ -31,16 +31,14 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
       Solo se conoce: por defecto RR.HH. (+ solicitante); `campo = 'centro_costo'` también Costos
       (visibilidad que aplica RLS). Hoy todas las tarjetas van a la columna RR.HH.
       → `area_kanban` (`domain/src/tablero.rs`)
-- [ ] **Kanban: acciones** (sin implementar). Reglas verificadas en producción (CHECK +
-      trigger `validar_solicitud_cambio`):
-      - estados: `pendiente`, `resuelta`, `rechazada`, `cancelada`; solo se cierra desde `pendiente`;
-      - Resolver → `resuelta` / Rechazar → `rechazada`: RR.HH., o Costos si `campo = 'centro_costo'`;
-        comentario de resolución obligatorio (≥ 3); la base fija `responsable_id` y `cerrada_at`;
-      - Cancelar → `cancelada`: solo quien la pidió; comentario opcional;
-      - "Ir a corregir": no existe un estado intermedio → solo navega (no cambia estado);
-      - `campo` ∈ centro_costo, cliente, contrato_comercial, tipo_contrato, modalidad,
-        dias_trabajo, sueldo_basico, bonos (los dos últimos exigen `cargo_id`).
-- [ ] **Kanban: ¿mostrar solicitudes cerradas** (`cerrada_at` no nulo)? Hoy se devuelven todas.
+- [x] **Kanban: acciones** (2026-11-03): Resolver / Rechazar / Cancelar e "Ir a corregir"
+      (navega a la matriz filtrada por servicio, sin cambiar estado), y "Solicitar cambio" desde la
+      matriz. Reglas de la base (copiadas al fixture `p2_solicitudes.sql`):
+      - estados `pendiente`, `resuelta`, `rechazada`, `cancelada`; solo se cierra desde `pendiente`;
+      - resolver/rechazar: RR.HH., o Costos si `campo = 'centro_costo'`; comentario obligatorio;
+      - cancelar: solo quien la pidió; `sueldo_basico` y `bonos` exigen cargo.
+- [ ] **Kanban: ¿mostrar solicitudes cerradas** (`cerrada_at` no nulo)? Hoy se devuelven todas
+      (las cerradas se ven atenuadas y sin acciones).
 - [ ] **Completitud: criterio de "composición salarial completa".** Cada fila de `servicio_cargos`
       ya exige `haber_basico_diurno`; no está definido qué la hace incompleta. No se evalúa
       (`criterios_sin_definir` en `/tablero`).
