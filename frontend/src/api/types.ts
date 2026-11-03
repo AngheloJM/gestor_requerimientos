@@ -162,6 +162,43 @@ export interface CrearRequerimiento {
   bonos_extra: BonoExtra[]
 }
 
+// GET /permisos · /roles (fases 0 y 1: los permisos se registran, todavía no se aplican)
+export type Alcance = 'todos' | 'servicios_asignados' | 'propios'
+
+export interface Permiso {
+  clave: string
+  modulo: string
+  recurso: string
+  recurso_nombre: string
+  accion: string
+  descripcion: string
+  admite_alcance: boolean
+}
+
+export interface PermisoAsignado {
+  clave: string
+  alcance: Alcance
+}
+
+export interface RolConfigurable {
+  id: Uuid
+  clave: string
+  nombre: string
+  descripcion: string | null
+  /** Los 4 valores de usuarios.rol: reflejan las reglas actuales, no se editan. */
+  es_sistema: boolean
+  activo: boolean
+  permisos: PermisoAsignado[]
+  actualizado: Timestamp
+}
+
+export interface GuardarRol {
+  nombre: string
+  descripcion: string | null
+  activo: boolean
+  permisos: PermisoAsignado[]
+}
+
 // GET /aprobaciones · PATCH /aprobaciones/{id} · GET /aprobaciones/{id}/historial
 export interface Aprobacion {
   id: Uuid

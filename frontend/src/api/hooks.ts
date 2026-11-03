@@ -12,10 +12,13 @@ import type {
   EntradaHistorial,
   FilaMatriz,
   FiltrosMatriz,
+  GuardarRol,
   CrearRequerimiento,
   Me,
   OpcionesRequerimiento,
+  Permiso,
   Requerimiento,
+  RolConfigurable,
   Tablero,
 } from '@/api/types'
 
@@ -30,6 +33,9 @@ export const queryKeys = {
   aprobaciones: ['aprobaciones'] as const,
   historial: (id: string) => ['aprobaciones', id, 'historial'] as const,
   tablero: ['tablero'] as const,
+  permisos: ['permisos'] as const,
+  roles: ['roles'] as const,
+  rol: (id: string) => ['roles', id] as const,
 }
 
 export function useMe() {
@@ -129,6 +135,57 @@ export function useEditarFechaFin() {
       void qc.invalidateQueries({ queryKey: queryKeys.historial(actualizada.id) })
       void qc.invalidateQueries({ queryKey: queryKeys.almanaqueTodos })
       void qc.invalidateQueries({ queryKey: queryKeys.requerimientosTodos })
+    },
+  })
+}
+
+// --- Roles y permisos --------------------------------------------------------------------
+
+export function usePermisos() {
+  return useQuery({
+    queryKey: queryKeys.permisos,
+    queryFn: ({ signal }) => api.get<Permiso[]>('/permisos', undefined, signal),
+    staleTime: 10 * 60_000,
+  })
+}
+
+export function useRoles() {
+  return useQuery({
+    queryKey: queryKeys.roles,
+    queryFn: ({ signal }) => api.get<RolConfigurable[]>('/roles', undefined, signal),
+  })
+}
+
+export function useRol(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.rol(id ?? ''),
+    queryFn: ({ signal }) => api.get<RolConfigurable>(`/roles/${encodeURIComponent(id!)}`, undefined, signal),
+    enabled: !!id,
+  })
+}
+
+/** Crea (sin id) o actualiza (con id) un rol con sus permisos. */
+export function useGuardarRol(id?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: GuardarRol) =>
+      id
+        ? api.put<RolConfigurable>(`/roles/${encodeURIComponent(id)}`, body)
+        : api.post<RolConfigurable>('/roles', body),
+    onSuccess: (rol) => {
+      qc.setQueryData(queryKeys.rol(rol.id), rol)
+      void qc.invalidateQueries({ queryKey: queryKeys.roles, exact: true })
+    },
+  })
+}
+
+export function useEliminarRol() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.del<void>(`/roles/${encodeURIComponent(id)}`),
+    onSuccess: (_, id) => {
+      qc.removeQueries({ queryKey: queryKeys.rol(id) })
+      void qc.invalidateQueries({ queryKey: queryKeys.roles, exact: true })
     },
   })
 }
