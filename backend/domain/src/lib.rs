@@ -33,7 +33,10 @@ pub use error::DomainError;
 pub use ids::*;
 pub use matriz::{FilaMatriz, FiltrosMatriz};
 pub use proyecto::Proyecto;
-pub use requerimiento::RequerimientoResumen;
+pub use requerimiento::{
+    BonoExtra, CargoOpcion, NuevoRequerimiento, OpcionesRequerimiento, RequerimientoResumen,
+    ServicioOpcion,
+};
 pub use rol::{Rol, RolDesconocido};
 pub use servicio::Servicio;
 pub use tablero::{

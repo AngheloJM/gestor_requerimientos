@@ -4,7 +4,10 @@
 //! asignado o inmediato superior del solicitante). Solo servicios activos (o sin servicio).
 
 use chrono::{DateTime, NaiveDate, Utc};
-use domain::{RequerimientoResumen, UsuarioId};
+use domain::{
+    CargoOpcion, Decimal, NuevoRequerimiento, OpcionesRequerimiento, RequerimientoResumen,
+    ServicioOpcion, UsuarioId,
+};
 use sqlx::{FromRow, PgConnection};
 use uuid::Uuid;
 
@@ -89,4 +92,134 @@ pub async fn listar(
             })
         })
         .collect()
+}
+
+// ---------------------------------------------------------------------------------------
+// Creación ("Nuevo requerimiento")
+// ---------------------------------------------------------------------------------------
+
+/// Servicios activos con sus cargos (de `servicio_cargos`) donde el usuario puede crear.
+/// Replica, solo para armar la lista, la regla de `crear_requerimiento_con_snapshot`
+/// (RR.HH.: cualquier servicio activo; resto: servicios asignados). La autoridad final es la
+/// función de la base, que vuelve a validarlo al crear.
+const QUERY_OPCIONES_SERVICIOS: &str = r#"
+SELECT s.id AS servicio_id, s.nombre::text AS servicio_nombre,
+       s.tiempo_capacitacion_dias::int4 AS tiempo_capacitacion_dias,
+       c.id AS cargo_id, c.nombre::text AS cargo_nombre, c.tipo::text AS cargo_tipo
+FROM servicios s
+JOIN servicio_cargos sc ON sc.servicio_id = s.id
+JOIN cargos c ON c.id = sc.cargo_id
+WHERE s.activo IS TRUE
+  AND (public.is_rrhh_admin(auth.uid())
+       OR EXISTS (SELECT 1 FROM usuario_servicios us
+                  WHERE us.usuario_id = auth.uid() AND us.servicio_id = s.id))
+ORDER BY s.nombre, s.id, c.nombre
+"#;
+
+const QUERY_CARGOS_STAFF: &str = r#"
+SELECT c.id AS cargo_id, c.nombre::text AS cargo_nombre, c.tipo::text AS cargo_tipo
+FROM cargos c WHERE c.tipo = 'administrativo_staff' ORDER BY c.nombre
+"#;
+
+/// Llama a la función de producción. Las claves del JSON son las que ella acepta; los nulos
+/// se omiten. Los montos viajan como `numeric` (sin pasar por float).
+const QUERY_CREAR: &str = r#"
+SELECT f.folio::text FROM public.crear_requerimiento_con_snapshot(
+    jsonb_strip_nulls(jsonb_build_object(
+        'tipo', $1::text,
+        'servicioId', $2::uuid,
+        'cargoId', $3::uuid,
+        'cantidadPersonas', $4::int4,
+        'motivo', $5::text,
+        'fechaInicioCapacitacion', to_char($6::date, 'YYYY-MM-DD'),
+        'fechaInicioOperacion', to_char($7::date, 'YYYY-MM-DD'),
+        'fechaFin', to_char($8::date, 'YYYY-MM-DD'),
+        'comentarios', $9::text))
+    || jsonb_build_object('bonosExtra', (
+        SELECT coalesce(jsonb_agg(jsonb_build_object(
+                   'tipo', 'extra', 'nombre', b.nombre, 'monto', b.monto, 'motivo', b.motivo)
+                   ORDER BY b.i), '[]'::jsonb)
+        FROM unnest($10::text[], $11::numeric[], $12::text[])
+             WITH ORDINALITY AS b(nombre, monto, motivo, i)))
+) AS f
+"#;
+
+#[derive(FromRow)]
+struct OpcionRow {
+    servicio_id: Uuid,
+    servicio_nombre: String,
+    tiempo_capacitacion_dias: Option<i32>,
+    cargo_id: Uuid,
+    cargo_nombre: String,
+    cargo_tipo: Option<String>,
+}
+
+#[derive(FromRow)]
+struct CargoRow {
+    cargo_id: Uuid,
+    cargo_nombre: String,
+    cargo_tipo: Option<String>,
+}
+
+impl From<CargoRow> for CargoOpcion {
+    fn from(c: CargoRow) -> Self {
+        CargoOpcion {
+            id: c.cargo_id.into(),
+            nombre: c.cargo_nombre,
+            tipo: c.cargo_tipo,
+        }
+    }
+}
+
+pub async fn opciones(conn: &mut PgConnection) -> Result<OpcionesRequerimiento, DbError> {
+    let filas: Vec<OpcionRow> = sqlx::query_as(QUERY_OPCIONES_SERVICIOS)
+        .fetch_all(&mut *conn)
+        .await?;
+    let mut servicios: Vec<ServicioOpcion> = Vec::new();
+    for f in filas {
+        let cargo = CargoOpcion {
+            id: f.cargo_id.into(),
+            nombre: f.cargo_nombre,
+            tipo: f.cargo_tipo,
+        };
+        match servicios.last_mut() {
+            Some(s) if Uuid::from(s.id) == f.servicio_id => s.cargos.push(cargo),
+            _ => servicios.push(ServicioOpcion {
+                id: f.servicio_id.into(),
+                nombre: f.servicio_nombre,
+                tiempo_capacitacion_dias: f.tiempo_capacitacion_dias,
+                cargos: vec![cargo],
+            }),
+        }
+    }
+    let staff: Vec<CargoRow> = sqlx::query_as(QUERY_CARGOS_STAFF).fetch_all(conn).await?;
+    Ok(OpcionesRequerimiento {
+        servicios,
+        cargos_staff: staff.into_iter().map(Into::into).collect(),
+    })
+}
+
+/// Crea el requerimiento (estado `pendiente`, solicitante = usuario actual) y devuelve su
+/// folio. Las reglas de negocio rechazadas vuelven como `DbError::regla_de_negocio`.
+pub async fn crear(conn: &mut PgConnection, n: &NuevoRequerimiento) -> Result<String, DbError> {
+    let nombres: Vec<&str> = n.bonos_extra.iter().map(|b| b.nombre.as_str()).collect();
+    let montos: Vec<Decimal> = n.bonos_extra.iter().map(|b| b.monto).collect();
+    let motivos: Vec<&str> = n.bonos_extra.iter().map(|b| b.motivo.as_str()).collect();
+    let cantidad = i32::try_from(n.cantidad).unwrap_or(i32::MAX);
+    let folio: String = sqlx::query_scalar(QUERY_CREAR)
+        .bind(&n.tipo)
+        .bind(n.servicio_id.map(Uuid::from))
+        .bind(Uuid::from(n.cargo_id))
+        .bind(cantidad)
+        .bind(&n.motivo)
+        .bind(n.fecha_inicio_capacitacion)
+        .bind(n.fecha_inicio_operacion)
+        .bind(n.fecha_fin)
+        .bind(n.comentarios.as_deref())
+        .bind(&nombres)
+        .bind(&montos)
+        .bind(&motivos)
+        .fetch_one(conn)
+        .await?;
+    Ok(folio)
 }
