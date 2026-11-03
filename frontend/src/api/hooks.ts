@@ -13,6 +13,7 @@ import type {
   FilaMatriz,
   FiltrosMatriz,
   Me,
+  Requerimiento,
   Tablero,
 } from '@/api/types'
 
@@ -22,6 +23,8 @@ export const queryKeys = {
   matriz: (f: FiltrosMatriz) => ['matriz-servicio', f] as const,
   almanaque: (anio: number, mes: number) => ['almanaque', anio, mes] as const,
   almanaqueTodos: ['almanaque'] as const,
+  requerimientos: (mios: boolean) => ['requerimientos', { mios }] as const,
+  requerimientosTodos: ['requerimientos'] as const,
   aprobaciones: ['aprobaciones'] as const,
   historial: (id: string) => ['aprobaciones', id, 'historial'] as const,
   tablero: ['tablero'] as const,
@@ -47,6 +50,16 @@ export function useAlmanaque(anio: number, mes: number) {
   return useQuery({
     queryKey: queryKeys.almanaque(anio, mes),
     queryFn: ({ signal }) => api.get<Almanaque>('/almanaque', { anio, mes }, signal),
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** Requerimientos visibles (RLS). `mios` = solo los que pidió el usuario. */
+export function useRequerimientos(mios: boolean) {
+  return useQuery({
+    queryKey: queryKeys.requerimientos(mios),
+    queryFn: ({ signal }) =>
+      api.get<Requerimiento[]>('/requerimientos', mios ? { mios: 'true' } : undefined, signal),
     placeholderData: keepPreviousData,
   })
 }
@@ -92,6 +105,7 @@ export function useEditarFechaFin() {
       )
       void qc.invalidateQueries({ queryKey: queryKeys.historial(actualizada.id) })
       void qc.invalidateQueries({ queryKey: queryKeys.almanaqueTodos })
+      void qc.invalidateQueries({ queryKey: queryKeys.requerimientosTodos })
     },
   })
 }

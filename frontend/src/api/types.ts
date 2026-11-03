@@ -95,6 +95,27 @@ export interface Almanaque {
   dias: DiaAlmanaque[]
 }
 
+// GET /requerimientos[?mios=true]
+/** Valores de la base (trigger p2_validar_campos); filas antiguas podrían traer otros. */
+export type EstadoRequerimiento = 'pendiente' | 'en_proceso' | 'aprobado' | 'rechazado' | 'cerrado'
+
+export interface Requerimiento {
+  id: Uuid
+  numero: number
+  folio: string | null
+  /** El usuario actual es el solicitante. */
+  es_mio: boolean
+  servicio: Ref | null
+  cargo: Ref
+  tipo: string | null
+  motivo: string | null
+  cantidad: number | null
+  estado: EstadoRequerimiento | string | null
+  fecha_inicio: FechaIso
+  fecha_inicio_operacion: FechaIso | null
+  creado: Timestamp
+}
+
 // GET /aprobaciones · PATCH /aprobaciones/{id} · GET /aprobaciones/{id}/historial
 export interface Aprobacion {
   id: Uuid
