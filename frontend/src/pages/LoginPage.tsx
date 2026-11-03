@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 
+import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/useAuth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -9,13 +10,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export function LoginPage() {
-  const { session, signIn } = useAuth()
+  const { autenticado, signIn } = useAuth()
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
   const destino = (location.state as { desde?: string } | null)?.desde ?? '/tablero'
-  if (session) return <Navigate to={destino} replace />
+  if (autenticado) return <Navigate to={destino} replace />
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -24,8 +25,14 @@ export function LoginPage() {
     setError(null)
     try {
       await signIn(String(form.get('email')), String(form.get('password')))
-    } catch {
-      setError('Email o contraseña incorrectos.')
+    } catch (e) {
+      setError(
+        e instanceof ApiError && e.status === 429
+          ? 'Demasiados intentos. Esperá unos minutos antes de volver a intentar.'
+          : e instanceof ApiError && e.status === 401
+            ? 'Email o contraseña incorrectos.'
+            : 'No se pudo conectar con el servidor.',
+      )
     } finally {
       setEnviando(false)
     }
