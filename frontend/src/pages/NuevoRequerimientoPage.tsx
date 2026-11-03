@@ -10,6 +10,7 @@ import {
   type CrearRequerimiento,
   type TipoRequerimiento,
   useCrearRequerimiento,
+  useMatrizServicio,
   useOpcionesRequerimiento,
 } from '@/api'
 import { ErrorApi } from '@/components/ErrorApi'
@@ -18,7 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capacitacionCalculada } from '@/lib/capacitacion'
-import { formatFecha } from '@/lib/format'
+import { formatFecha, formatMonto } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const TIPOS: { valor: TipoRequerimiento; titulo: string; detalle: string }[] = [
@@ -111,6 +112,56 @@ function Seccion({ titulo, children }: { titulo: string; children: React.ReactNo
       <h3 className="mb-4 text-base font-semibold text-nova-titulo">{titulo}</h3>
       {children}
     </section>
+  )
+}
+
+/**
+ * Vista previa de lo que se congela al crear: los mismos datos de la fila de la Matriz de
+ * Servicio (servicio_cargos + bonos configurados). La base toma la foto al guardar.
+ */
+function VistaPrevia({ servicioId, cargoId }: { servicioId: string; cargoId: string }) {
+  const { data, isPending, error } = useMatrizServicio({ servicio_id: servicioId }, { enabled: !!servicioId })
+  const fila = data?.find((f) => f.cargo.id === cargoId && f.servicio.id === servicioId)
+  const bs = (m: string | null) => (m == null ? '—' : `Bs ${formatMonto(m)}`)
+  if (error) return <ErrorApi error={error} />
+  if (isPending) return <Skeleton className="h-24 rounded-xl" />
+  if (!fila) {
+    return (
+      <p className="rounded-lg border border-dashed bg-white p-3 text-sm text-nova-gris">
+        No hay composición salarial visible para este servicio y cargo.
+      </p>
+    )
+  }
+  return (
+    <div className="grid gap-2 rounded-xl border border-nova-azul/30 bg-nova-hielo/40 p-4" aria-label="Sueldo que se congela">
+      <p className="text-sm font-semibold text-nova-titulo">Se va a congelar</p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_auto_auto_auto]">
+        <dt className="text-nova-gris">Haber básico diurno</dt>
+        <dd className="tabular-nums">{bs(fila.haber_basico_diurno)}</dd>
+        <dt className="text-nova-gris">Haber básico nocturno</dt>
+        <dd className="tabular-nums">{bs(fila.haber_basico_nocturno)}</dd>
+      </dl>
+      <div className="text-sm">
+        <p className="text-nova-gris">Bonos configurados</p>
+        {fila.metricas.length === 0 ? (
+          <p>—</p>
+        ) : (
+          <ul className="grid gap-0.5">
+            {fila.metricas.map((m) => (
+              <li key={m.id} className="flex max-w-sm justify-between gap-3">
+                <span>{m.nombre}</span>
+                <span className="tabular-nums">{bs(m.monto_bono)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p className="text-sm">
+        <span className="text-nova-gris">Total ganado: </span>
+        <span className="font-semibold tabular-nums text-nova-azul">{bs(fila.total_ganado)}</span>
+        <span className="text-xs text-nova-gris"> (sin ajustar por cumplimiento real; los bonos extra se suman aparte)</span>
+      </p>
+    </div>
   )
 }
 
@@ -310,6 +361,8 @@ export function NuevoRequerimientoPage() {
           </Campo>
         </div>
       </Seccion>
+
+      {servicio && servicio !== SIN_SERVICIO && cargoId && <VistaPrevia servicioId={servicio} cargoId={cargoId} />}
 
       <Seccion titulo="3. Fechas">
         <div className="grid gap-4 sm:grid-cols-3">
