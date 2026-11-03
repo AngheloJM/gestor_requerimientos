@@ -24,7 +24,7 @@ Resumen de lo que permite hoy cada rol:
 | Requerimientos: editar (`p2_acceso`, campos limitados salvo RR.HH.) | todos | propios, superior de | propios, superior de, servicios asignados | no |
 | Requerimientos: cambiar `estado` (aprobar) | sí | no | no | no |
 | Entregas: registrar / decidir | sí / sí | con `p2_acceso` / no | con `p2_acceso` / no | no |
-| Sueldos (`servicio_cargos`, métricas, umbrales): ver | todos | según `puede_ver_servicio` | según `puede_ver_servicio` | según `puede_ver_servicio` |
+| Sueldos (`servicio_cargos`, métricas, umbrales): ver | todos | servicios asignados | servicios asignados | no |
 | Sueldos: editar | sí | no | no | no |
 | Matriz (clientes, centros, contratos, servicios, cargos): editar | sí | no | no | no |
 | Catálogo de bonos: ver | sí | sí | no | no |
@@ -34,7 +34,7 @@ Resumen de lo que permite hoy cada rol:
 | Solicitudes de cambio: resolver | sí | solo `campo = centro_costo` | no | no |
 | Usuarios y asignación de servicios: editar | sí | no | no | no |
 
-`puede_ver_servicio` no fue revisada todavía (TODO: leer su definición).
+`puede_ver_servicio`: activo y (`rrhh_admin` o `encargado_costos`/`estandar` con el servicio asignado).
 
 ## 2. Propuesta: permisos por rol, guardados en la base
 
@@ -98,7 +98,15 @@ Se proponen ampliando (nunca restringiendo lo que hoy funciona) y con respaldo
 - Los permisos se evalúan en cada consulta (no se cachean en el token): quitar un permiso
   tiene efecto inmediato.
 
-## 5. Preguntas para definir
+## 5. Decisión de interfaz (2026-11-03)
+
+- Vista nueva **Roles** (Configuración): lista de roles, botón **Crear rol**.
+- Crear rol = nombre (+ descripción) y, en el mismo paso, **elegir sus permisos**.
+- Permisos **granulares**: por cada módulo y cada recurso, acciones separadas
+  **ver / crear / editar / eliminar** (y acciones especiales como aprobar), "hasta lo más mínimo".
+- Los permisos de un rol se pueden **editar después** de creado.
+
+## 6. Preguntas para definir
 
 1. ¿Qué roles nuevos se prevén además de "Gerente"? ¿Un usuario tiene **un** rol o puede tener varios?
 2. Gerente: ¿ve **todos** los servicios o solo los asignados? ¿"Aprobar" es cambiar `estado`
