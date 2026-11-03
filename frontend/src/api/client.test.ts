@@ -73,3 +73,33 @@ describe('createApiClient', () => {
     expect(err).toMatchObject({ status: 400, codigo: 'http_400', detalle: 'Invalid URL: bad uuid' })
   })
 })
+
+describe('renovación de sesión ante 401', () => {
+  it('refresca una vez y reintenta con el token nuevo', async () => {
+    const f = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(401, { error: 'unauthorized' }))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
+    const onUnauthorized = vi.fn().mockResolvedValue('tok-nuevo')
+    const c = createApiClient({ baseUrl: 'http://api.test', getToken: async () => 'tok-viejo', fetch: f, onUnauthorized })
+    expect(await c.get('/me')).toEqual({ ok: true })
+    expect(onUnauthorized).toHaveBeenCalledTimes(1)
+    expect((f.mock.calls[1]![1]!.headers as Record<string, string>).Authorization).toBe('Bearer tok-nuevo')
+  })
+
+  it('si no se puede refrescar, propaga el 401', async () => {
+    const f = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(401, { error: 'unauthorized' }))
+    const c = createApiClient({ baseUrl: 'http://api.test', getToken: async () => 't', fetch: f, onUnauthorized: async () => null })
+    await expect(c.get('/me')).rejects.toMatchObject({ status: 401 })
+    expect(f).toHaveBeenCalledTimes(1)
+  })
+
+  it('envía cookies y encabezado anti-CSRF; base relativa', async () => {
+    const f = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(200, {}))
+    const c = createApiClient({ baseUrl: '/api', getToken: async () => null, fetch: f })
+    await c.get('/tablero', { x: 1 })
+    expect(f.mock.calls[0]![0]).toBe('/api/tablero?x=1')
+    expect(f.mock.calls[0]![1]!.credentials).toBe('include')
+    expect((f.mock.calls[0]![1]!.headers as Record<string, string>)['X-CSRF']).toBe('1')
+  })
+})

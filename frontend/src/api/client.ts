@@ -29,17 +29,20 @@ export interface RequestOptions {
 export interface ApiClientConfig {
   baseUrl: string
   getToken: () => Promise<string | null>
+  /** Ante un 401, intenta renovar la sesión; si devuelve un token, reintenta una vez. */
+  onUnauthorized?: () => Promise<string | null>
   /** Inyectable para tests. */
   fetch?: typeof fetch
 }
 
 export function buildUrl(baseUrl: string, path: string, query?: QueryParams): string {
-  const url = new URL(baseUrl.replace(/\/+$/, '') + path)
+  // Base relativa (ej. "/api" detrás del proxy de Vite) o absoluta.
+  const url = new URL(baseUrl.replace(/\/+$/, '') + path, globalThis.location?.origin ?? 'http://localhost')
   for (const [k, v] of Object.entries(query ?? {})) {
     // null/undefined/'' = filtro no aplicado: no se envía.
     if (v !== null && v !== undefined && v !== '') url.searchParams.set(k, String(v))
   }
-  return url.toString()
+  return /^https?:\/\//.test(baseUrl) ? url.toString() : url.pathname + url.search
 }
 
 async function parseError(res: Response): Promise<ApiError> {
@@ -58,18 +61,25 @@ async function parseError(res: Response): Promise<ApiError> {
 export function createApiClient(config: ApiClientConfig) {
   const doFetch = config.fetch ?? fetch.bind(globalThis)
 
-  async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
-    const headers: Record<string, string> = { Accept: 'application/json' }
-    const token = await config.getToken()
+  async function enviar(path: string, opts: RequestOptions, token: string | null) {
+    const headers: Record<string, string> = { Accept: 'application/json', 'X-CSRF': '1' }
     if (token) headers.Authorization = `Bearer ${token}`
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
-
-    const res = await doFetch(buildUrl(config.baseUrl, path, opts.query), {
+    return doFetch(buildUrl(config.baseUrl, path, opts.query), {
       method: opts.method ?? 'GET',
       headers,
+      credentials: 'include',
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
       signal: opts.signal,
     })
+  }
+
+  async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+    let res = await enviar(path, opts, await config.getToken())
+    if (res.status === 401 && config.onUnauthorized) {
+      const nuevo = await config.onUnauthorized()
+      if (nuevo) res = await enviar(path, opts, nuevo)
+    }
 
     if (!res.ok) throw await parseError(res)
     if (res.status === 204) return undefined as T
