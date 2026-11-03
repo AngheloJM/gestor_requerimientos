@@ -108,7 +108,14 @@ Se proponen ampliando (nunca restringiendo lo que hoy funciona) y con respaldo
   **ver / crear / editar / eliminar** (y acciones especiales como aprobar), "hasta lo más mínimo".
 - Los permisos de un rol se pueden **editar después** de creado.
 
-## 6. Preguntas para definir
+## 6. Decisiones (2026-11-03)
+
+- **Administración de roles: solo `rrhh_admin`** (ya aplicado en las políticas de la migración 0003).
+- **Un usuario tiene un solo rol.** Para darle otros permisos se le cambia el rol (o se edita
+  el rol). Encaja con la columna única `usuarios.rol`; en la fase 2 esa columna pasa a aceptar
+  cualquier `roles.clave` activa.
+
+## 7. Preguntas para definir
 
 1. ¿Qué roles nuevos se prevén además de "Gerente"? ¿Un usuario tiene **un** rol o puede tener varios?
 2. Gerente: ¿ve **todos** los servicios o solo los asignados? ¿"Aprobar" es cambiar `estado`
