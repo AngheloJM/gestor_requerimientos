@@ -107,7 +107,11 @@ fn protected_routes(state: AppState) -> Router<AppState> {
         .route("/matriz-servicio", get(matriz::get_matriz_servicio))
         .route("/almanaque", get(almanaque::get_almanaque))
         .route("/tablero", get(tablero::get_tablero))
-        .route("/requerimientos", get(requerimientos::listar))
+        .route(
+            "/requerimientos",
+            get(requerimientos::listar).post(requerimientos::crear),
+        )
+        .route("/requerimientos/opciones", get(requerimientos::opciones))
         .route("/aprobaciones", get(aprobaciones::listar))
         .route("/aprobaciones/{id}", patch(aprobaciones::editar_fecha_fin))
         .route("/aprobaciones/{id}/historial", get(aprobaciones::historial))
