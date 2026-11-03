@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use axum::http::{HeaderValue, Method, header};
+use axum::http::{HeaderName, HeaderValue, Method, header};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 pub fn desde_env() -> Result<CorsLayer, String> {
@@ -43,7 +43,14 @@ pub fn construir(raw: &str) -> Result<CorsLayer, String> {
             Method::PUT,
             Method::DELETE,
         ])
-        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::ACCEPT])
+        .allow_headers([
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            header::ACCEPT,
+            HeaderName::from_static(crate::sesion::HEADER_CSRF),
+        ])
+        // Necesario para la cookie del refresh token entre orígenes distintos.
+        .allow_credentials(true)
         .max_age(Duration::from_secs(600)))
 }
 
