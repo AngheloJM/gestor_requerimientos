@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   ClipboardCheck,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -16,6 +17,7 @@ import { Logo } from '@/components/marca/Logo'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
+  { to: '/requerimientos', label: 'Mis requerimientos', icono: ClipboardList },
   { to: '/tablero', label: 'Tablero', icono: LayoutDashboard },
   { to: '/matriz', label: 'Matriz de servicio', icono: Table2 },
   { to: '/almanaque', label: 'Almanaque', icono: CalendarDays },
