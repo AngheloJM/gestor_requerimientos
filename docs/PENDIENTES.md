@@ -58,20 +58,29 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
       (ya implementada), revisar el uso de sentencias preparadas de SQLx.
 - [ ] **Baseline:** pegar el `pg_dump --schema-only --schema=public` real en
       `backend/migrations/0001_init.sql` y marcarla como aplicada en Supabase sin ejecutarla.
-- [ ] **Probar con el proyecto real:** `SUPABASE_URL=https://<ref>.supabase.co cargo test -p api
-      -- --ignored jwks_real`, luego login real y `/me`.
-- [ ] **Revocar la clave HS256** en Supabase > JWT Keys (ya no debería haber tokens HS256 vigentes).
+
+## Autenticación propia
+
+- [ ] **Migración `0002_autenticacion_propia.sql` (tablas `credenciales` y `sesiones`)**: aditiva,
+      aplicada solo en local. **No aplicada en Supabase**: requiere confirmación.
+- [ ] **Usuarios reales**: hoy inician sesión con Supabase Auth (contraseñas en `auth.users`, bcrypt).
+      Con el login propio cada usuario necesita una credencial nueva (`establecer-credenciales`).
+      TODO(negocio): ¿se les asigna contraseña inicial / flujo de "olvidé mi contraseña"?
+      (Opción técnica: verificar el bcrypt de `auth.users` en el primer login y migrar a argon2id.)
+- [ ] **Recuperación de contraseña** (email): no implementada (requiere servicio de correo).
+- [ ] **Limitador de intentos en memoria**: válido para una sola instancia; con varias réplicas,
+      moverlo a Redis o a una tabla. Detrás de un proxy, configurar IP real (`X-Forwarded-For`).
+- [ ] **Contraseñas filtradas**: validar contra listas conocidas (HIBP k-anonymity).
+- [ ] **HTTPS en producción** + `HSTS=true`.
 
 ## Frontend
 
 - [ ] Copiar el código de Lovable y portar las pantallas de matriz, almanaque y aprobaciones.
-- [ ] Confirmar el método de login de Lovable (hoy: email + contraseña).
 - [ ] Generar los tipos de la API desde OpenAPI en lugar de mantenerlos a mano.
 
 ## Resuelto
 
-- [x] JWT: ES256 vía JWKS con `kid`, refresco periódico y por rotación, validación de `iss`;
-      HS256 solo como fallback opcional (desactivado por defecto).
+- [x] Login propio con argon2id (reemplaza Supabase Auth; el código JWKS quedó en el historial de git).
 - [x] Autorización: delegada a RLS (`SET LOCAL ROLE authenticated` + `request.jwt.claims` por
       transacción). Se eliminó toda la autorización reimplementada en Rust.
 - [x] Schema real aplicado a dominio y consultas; `servicios.activo = true` en todas las consultas.

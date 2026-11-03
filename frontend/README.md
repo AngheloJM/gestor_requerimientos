@@ -6,21 +6,20 @@ Vite + React + TypeScript + Tailwind v4 + shadcn/ui (base radix, preset nova) + 
 
 - **Datos**: siempre vía la API en Rust (`VITE_API_URL`), con los hooks de `@/api`
   (`useTablero`, `useMatrizServicio`, `useAlmanaque`, `useAprobaciones`, `useEditarFechaFin`, `useMe`).
-- **Autenticación**: `@supabase/supabase-js` se usa **solo** para login/logout y obtener el
-  `access_token`, que el cliente envía como `Authorization: Bearer` a la API.
-  No usar `supabase.from(...)` / `supabase.rpc(...)`.
+- **Autenticación** contra la API propia (`src/auth/sesion.ts`): el access token vive solo en
+  memoria; el refresh token es una cookie HttpOnly que el navegador envía a `/auth/refresh`.
+  Ante un 401 el cliente renueva la sesión una vez y reintenta.
 - **Montos**: llegan como string (`"3750.50"`). No convertir a `number` para calcular;
   usar `formatMonto` solo para mostrar.
 
 ## Puesta en marcha
 
 ```bash
-cp .env.example .env.local   # completar; no versionar
 npm install
 npm run dev                  # http://localhost:5173
 ```
 
-El backend debe tener `CORS_ALLOWED_ORIGINS=http://localhost:5173`.
+En desarrollo Vite redirige `/api/*` al backend (`127.0.0.1:8080`): mismo origen, sin CORS.
 
 ## Scripts
 
