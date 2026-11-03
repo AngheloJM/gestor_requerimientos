@@ -5,6 +5,8 @@ import { Layout } from '@/components/Layout'
 import { LoginPage } from '@/pages/LoginPage'
 import { MisRequerimientosPage } from '@/pages/MisRequerimientosPage'
 import { NuevoRequerimientoPage } from '@/pages/NuevoRequerimientoPage'
+import { RolEditorPage } from '@/pages/RolEditorPage'
+import { RolesPage } from '@/pages/RolesPage'
 import { Pendiente } from '@/pages/Pendiente'
 import { TableroPage } from '@/pages/TableroPage'
 
@@ -18,6 +20,8 @@ export default function App() {
             <Route path="/tablero" element={<TableroPage />} />
             <Route path="/requerimientos" element={<MisRequerimientosPage />} />
             <Route path="/nuevo-requerimiento" element={<NuevoRequerimientoPage />} />
+            <Route path="/roles" element={<RolesPage />} />
+            <Route path="/roles/:id" element={<RolEditorPage />} />
             <Route path="/matriz" element={<Pendiente titulo="Matriz de servicio" hook="useMatrizServicio" />} />
             <Route path="/almanaque" element={<Pendiente titulo="Almanaque" hook="useAlmanaque" />} />
             <Route path="/aprobaciones" element={<Pendiente titulo="Aprobaciones" hook="useAprobaciones / useEditarFechaFin" />} />

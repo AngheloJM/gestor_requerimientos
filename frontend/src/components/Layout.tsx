@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  ShieldCheck,
   Table2,
   X,
 } from 'lucide-react'
@@ -23,6 +24,7 @@ const LINKS = [
   { to: '/almanaque', label: 'Almanaque', icono: CalendarDays },
   // Solo se oculta en el menú; la autorización real la aplica RLS en la base.
   { to: '/aprobaciones', label: 'Aprobaciones', icono: ClipboardCheck, soloRol: 'rrhh_admin' },
+  { to: '/roles', label: 'Roles y permisos', icono: ShieldCheck, soloRol: 'rrhh_admin' },
 ] as const
 
 const ROLES: Record<string, string> = {
