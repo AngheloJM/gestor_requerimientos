@@ -101,6 +101,17 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 - [x] Administración de roles: solo `rrhh_admin`. Un usuario = un solo rol (decisión 2026-11-03).
 - [ ] TODO(negocio): si `estandar` ve montos (`sueldos.ver_montos`; hoy RLS se los muestra).
 
+## Usuarios
+
+- [ ] **Alta de usuarios desde la app**: no disponible. En producción `usuarios.id` es FK a
+      `auth.users` (Supabase Auth, ON DELETE CASCADE). TODO(negocio): crear la cuenta en
+      Supabase Auth (Admin API, requiere la service key en el backend) o quitar esa FK
+      (cambio no aditivo). Hoy: alta en Supabase + `establecer-credenciales` (CLI).
+- [ ] **Autoedición**: la pantalla no deja a un RR.HH. cambiar su propio rol ni desactivarse
+      (protección de interfaz para no perder el acceso). Confirmar si se mantiene.
+- [ ] Edición de `nombre` y de `es_reclutador_staff_default`: fuera de la pantalla (igual que
+      el original; el segundo sigue sin definir).
+
 ## Frontend
 
 - [ ] Copiar el código de Lovable y portar las pantallas de matriz, almanaque y aprobaciones.
