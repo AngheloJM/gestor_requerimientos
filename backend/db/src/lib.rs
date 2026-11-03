@@ -12,6 +12,7 @@ use std::fmt;
 
 pub mod almanaque;
 pub mod aprobaciones;
+pub mod auth;
 pub mod matriz;
 pub mod rls;
 pub mod tablero;
