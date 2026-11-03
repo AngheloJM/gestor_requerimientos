@@ -15,6 +15,7 @@ pub mod composicion_salarial;
 pub mod contrato_comercial;
 pub mod matriz;
 pub mod proyecto;
+pub mod requerimiento;
 pub mod rol;
 pub mod servicio;
 pub mod tablero;
@@ -32,6 +33,7 @@ pub use error::DomainError;
 pub use ids::*;
 pub use matriz::{FilaMatriz, FiltrosMatriz};
 pub use proyecto::Proyecto;
+pub use requerimiento::RequerimientoResumen;
 pub use rol::{Rol, RolDesconocido};
 pub use servicio::Servicio;
 pub use tablero::{
