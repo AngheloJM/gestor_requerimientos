@@ -67,12 +67,14 @@ impl ComposicionSalarial {
         self.haber_basico_diurno + self.haber_basico_nocturno.unwrap_or_default()
     }
 
-    /// Total ganado = haberes + bonos aplicables. Los bonos aplicables dependen del
-    /// resultado mensual de cada métrica, que todavía no existe → `None`.
+    /// Total ganado = haber básico diurno + nocturno + suma de `monto_bono` de las métricas
+    /// configuradas (regla confirmada: es el cálculo que ya usa la aplicación original).
     ///
-    /// TODO(negocio): definir la fuente del resultado mensual de métricas (ver `umbral_para`).
-    pub fn total_ganado(&self) -> Option<Decimal> {
-        None
+    /// Debe coincidir con el valor que muestra hoy la aplicación original (evitar regresión).
+    // TODO(negocio): no ajusta por cumplimiento real mensual — revisar cuando exista esa tabla
+    // (ver `MetricaBono::umbral_para`).
+    pub fn total_ganado(&self) -> Decimal {
+        self.total_haberes() + self.metricas.iter().map(|m| m.monto_bono).sum::<Decimal>()
     }
 }
 
@@ -133,11 +135,35 @@ mod tests {
             metricas: vec![],
         };
         assert_eq!(c.total_haberes(), dec!(3000.00));
-        assert_eq!(c.total_ganado(), None);
+        assert_eq!(
+            c.total_ganado(),
+            dec!(3000.00),
+            "sin métricas = solo haberes"
+        );
+        let bono = |monto| MetricaBono {
+            id: ServicioCargoMetricaId::new(),
+            metrica_id: MetricaId::new(),
+            nombre: "Bono".into(),
+            concepto: None,
+            formula: None,
+            peso_pct: dec!(50),
+            monto_bono: monto,
+            umbrales: vec![],
+        };
         let c = ComposicionSalarial {
             haber_basico_nocturno: Some(dec!(500.50)),
+            metricas: vec![bono(dec!(200)), bono(dec!(100))],
             ..c
         };
         assert_eq!(c.total_haberes(), dec!(3500.50));
+        assert_eq!(c.total_ganado(), dec!(3800.50));
+        // Caso real verificado en la aplicación original: 2800 + 0 + bono 150 = 2950.
+        let real = ComposicionSalarial {
+            haber_basico_diurno: dec!(2800),
+            haber_basico_nocturno: Some(dec!(0)),
+            metricas: vec![bono(dec!(150))],
+            ..c
+        };
+        assert_eq!(real.total_ganado(), dec!(2950));
     }
 }

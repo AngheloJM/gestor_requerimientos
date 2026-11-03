@@ -70,8 +70,8 @@ async fn metricas_y_umbrales(pool: db::PgPool) {
     assert_eq!(c.total_haberes(), dec!(3500.00));
     assert_eq!(
         c.total_ganado(),
-        None,
-        "pendiente: resultado mensual de métricas"
+        dec!(3800.00),
+        "haberes + bonos AHT 200 y Calidad 100"
     );
     let nombres: Vec<_> = c.metricas.iter().map(|m| m.nombre.as_str()).collect();
     assert_eq!(nombres, ["AHT", "Calidad"]);

@@ -92,9 +92,9 @@ pub struct FilaMatrizDto {
     pub haber_basico_nocturno: Option<Decimal>,
     /// Diurno + nocturno (nocturno NULL cuenta como 0).
     pub total_haberes: Decimal,
-    /// TODO(negocio): `null` hasta que exista el resultado mensual de cada métrica
-    /// (necesario para saber qué bonos aplican).
-    pub total_ganado: Option<Decimal>,
+    /// Haberes + suma de `monto_bono` de las métricas configuradas.
+    // TODO(negocio): no ajusta por cumplimiento real mensual — revisar cuando exista esa tabla.
+    pub total_ganado: Decimal,
     pub metricas: Vec<MetricaDto>,
 }
 
@@ -133,7 +133,7 @@ impl From<FilaMatriz> for FilaMatrizDto {
             haber_basico_diurno: monto(c.haber_basico_diurno),
             haber_basico_nocturno: c.haber_basico_nocturno.map(monto),
             total_haberes: monto(c.total_haberes()),
-            total_ganado: c.total_ganado().map(monto),
+            total_ganado: monto(c.total_ganado()),
             metricas: c.metricas.iter().map(MetricaDto::from).collect(),
             centro_costo: f.centro_costo.map(|cc| CentroCostoDto {
                 id: cc.id.into(),
@@ -179,7 +179,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn dto_montos_total_ganado_pendiente_y_metricas() {
+    fn dto_montos_total_ganado_y_metricas() {
         let sid = ServicioId::new();
         let cid = CargoId::new();
         let fila = FilaMatriz {
@@ -223,7 +223,7 @@ mod tests {
         assert_eq!(v["haber_basico_diurno"], json!("3000.00"));
         assert_eq!(v["haber_basico_nocturno"], json!(null));
         assert_eq!(v["total_haberes"], json!("3000.00"));
-        assert_eq!(v["total_ganado"], json!(null));
+        assert_eq!(v["total_ganado"], json!("3200.00"));
         assert_eq!(v["centro_costo"], json!(null));
         assert_eq!(v["metricas"][0]["monto_bono"], json!("200.00"));
         assert_eq!(v["metricas"][0]["peso_pct"], json!("60"));
