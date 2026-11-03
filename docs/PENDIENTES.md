@@ -49,13 +49,17 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 - [ ] **Contratos con duración** (`duracion_valor`/`duracion_unidad`): falta la semántica de
       `duracion_unidad` para calcular el fin. Hoy su vigencia es "indeterminada"
       (tarea `verificar_vigencia_contrato`). Lo mismo si no tiene ni fecha_fin ni duración.
-- [ ] **Almanaque:**
-      - qué `requerimientos.estado` y qué decisiones de entrega (`requerimiento_entrega_decisiones`) cuentan
-        (hoy no se filtra por estado);
-      - rol de `requerimiento_entregas.tipo` (hoy entrega/rectificación se distingue solo por `corrige_entrega_id`);
-      - si la cantidad de una rectificación reemplaza o ajusta la de la entrega corregida (hoy se lista aparte);
-      - si un requerimiento con `cantidad_personas` NULL cuenta como 1 (hoy no se suma; se informa
-        `registros_sin_cantidad`).
+- [x] **Almanaque** (2026-11-03): usa `leer_eventos_almanaque` de producción, igual que la app
+      original → no filtra por estado del requerimiento; entregas/rectificaciones según
+      `requerimiento_entregas.tipo`, con estado de decisión (pendiente/aceptada/rechazada);
+      acceso: RR.HH. todo, costos/estándar sus servicios asignados, otros 403.
+      Se agrega el filtro propio de **servicios activos** (cruce por folio).
+- [ ] **Almanaque — pendientes de negocio:**
+      - si un requerimiento con `cantidad_personas` NULL cuenta como 1 (hoy se informa aparte);
+      - confirmar que la rectificación es un ajuste (CHECK `cantidad <> 0` admite negativos):
+        hoy se muestra aparte, con su signo, sin netear;
+      - diferencia con RLS: la función no muestra al solicitante ni al inmediato superior los
+        requerimientos de servicios que no tienen asignados (sí los ven en "Mis requerimientos").
 - [ ] **Filas de `servicio_cargos` con `servicio_id` NULL:** qué representan. La matriz las excluye.
 - [ ] **Overrides por operador** (`operador_composicion_override`): no se usan aún en ningún endpoint.
 
@@ -94,8 +98,8 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 
 - [ ] **Migración `0003_roles_permisos.sql`** (aditiva): aplicada solo en local. Aplicarla en
       Supabase requiere confirmación. Ver `docs/PLAN_ROLES.md` (fases 2–4 y preguntas abiertas).
-- [ ] TODO(negocio): quién administra roles (hoy `rrhh_admin`), si un usuario puede tener varios
-      roles, y si `estandar` ve montos (`sueldos.ver_montos`; hoy RLS se los muestra).
+- [x] Administración de roles: solo `rrhh_admin`. Un usuario = un solo rol (decisión 2026-11-03).
+- [ ] TODO(negocio): si `estandar` ve montos (`sueldos.ver_montos`; hoy RLS se los muestra).
 
 ## Frontend
 
