@@ -2,8 +2,8 @@
 # Administra la base local (Podman). Uso:
 #   ./db.sh init       genera .env con contraseña aleatoria (una sola vez)
 #   ./db.sh up         levanta el contenedor y espera a que esté listo
-#   ./db.sh cargar     carga el schema: archivos de schema/*.sql (dump real) si existen;
-#                      si no, los fixtures aproximados de los tests + datos ficticios
+#   ./db.sh cargar     carga el schema (schema/*.sql reales si existen, si no fixtures)
+#                      y luego las migraciones de backend/migrations;
 #   ./db.sh psql       consola psql dentro del contenedor
 #   ./db.sh url        imprime el DATABASE_URL para backend/.env (contiene la contraseña local)
 #   ./db.sh down       detiene el contenedor (conserva los datos)
@@ -50,6 +50,8 @@ case "${1:-}" in
       echo "schema/ vacío → cargando fixtures APROXIMADOS (tipos y RLS de prueba, no los de prod)"
       for f in supabase_subset rls_test datos; do echo "  $f.sql"; psql_in -q < "$FIXTURES/$f.sql"; done
     fi
+    # Migraciones propias (aditivas), en orden. 0001 es la baseline (solo comentarios hoy).
+    for f in ../../backend/migrations/*.sql; do echo "  migración $(basename "$f")"; psql_in -q < "$f"; done
     psql_in -c "SELECT current_setting('server_version') AS version,
                        (SELECT count(*) FROM pg_tables WHERE schemaname='public') AS tablas_public"
     ;;
