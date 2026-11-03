@@ -17,3 +17,6 @@ dist/
 /*.docx
 /Prototipo_*.html
 /referencias/
+
+# Material de referencia del cliente (no publicar)
+/*.zip

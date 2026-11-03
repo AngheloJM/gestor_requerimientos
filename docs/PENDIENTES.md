@@ -6,19 +6,40 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 ## Decisiones de negocio pendientes (no implementadas a criterio propio)
 
 - [ ] **Resultado mensual de métricas.** No existe la tabla ni está definido quién/cómo lo carga.
-      Sin eso no se puede aplicar `servicio_cargo_metrica_umbrales` ni calcular "bonos aplicables":
-      `total_ganado` se devuelve `null` en `/matriz-servicio` (sí se devuelve `total_haberes`).
-      También falta confirmar la escala de `pct_bono` (0–100 o 0–1).
+      Mientras tanto `total_ganado` = haber diurno + nocturno + suma de `monto_bono` configurados
+      (regla confirmada, igual a la aplicación original), **sin ajustar por cumplimiento real**:
+      revisar cuando exista la tabla (umbrales y escala de `pct_bono`, 0–100 o 0–1).
       → `ComposicionSalarial::total_ganado`, `MetricaBono::umbral_para` (`domain/src/composicion_salarial.rs`)
+- [ ] **`catalogo_bonos`**: 2 filas en producción y **ninguna FK la referencia** (sin conectar).
+      No portar como fuente de bonos hasta definir su uso.
+- [ ] **`/operadores`** — políticas RLS verificadas en la base real:
+      - `operadores_select_authenticated` (SELECT): `current_user_role() IN ('rrhh_admin','encargado_costos')`;
+      - `operadores_write_rrhh_admin` (ALL): `is_rrhh_admin(auth.uid())`.
+      `estandar` y `externo` **no** leen la tabla. Pendiente: si `estandar` ve algún resumen, de qué
+      consulta agregada sale. Verificado: `current_user_role()` es
+      `SELECT rol FROM usuarios WHERE id = auth.uid()` (SECURITY DEFINER), equivalente a
+      `test_rol()` del fixture `rls_test.sql`; funciona con los claims que setea `db::rls`.
 - [ ] **`usuarios.es_reclutador_staff_default`** y su relación con `requerimientos.reclutador_asignado_id`:
       sin definir. No se tocó ni se modeló.
 - [ ] **¿`estandar` ve montos salariales de su servicio o solo la estructura?** No confirmado.
       Hoy la matriz devuelve lo que RLS permite ver. RLS filtra **filas**, no columnas: ocultar
       montos requeriría una vista o privilegios por columna (cambio de base, a decidir).
+- [ ] **Categoría de desvío** (`falla_capacitacion`, `rechazo_operaciones`, `ratio_reclutamiento`,
+      `cambio_cliente`): la API la acepta (opcional, junto con su explicación); falta definir
+      cuándo la interfaz debe pedirla.
 - [ ] **Kanban: enrutamiento de `solicitudes_cambio.campo` a las columnas Comercial y Operaciones.**
       Solo se conoce: por defecto RR.HH. (+ solicitante); `campo = 'centro_costo'` también Costos
       (visibilidad que aplica RLS). Hoy todas las tarjetas van a la columna RR.HH.
       → `area_kanban` (`domain/src/tablero.rs`)
+- [ ] **Kanban: acciones** (sin implementar). Reglas verificadas en producción (CHECK +
+      trigger `validar_solicitud_cambio`):
+      - estados: `pendiente`, `resuelta`, `rechazada`, `cancelada`; solo se cierra desde `pendiente`;
+      - Resolver → `resuelta` / Rechazar → `rechazada`: RR.HH., o Costos si `campo = 'centro_costo'`;
+        comentario de resolución obligatorio (≥ 3); la base fija `responsable_id` y `cerrada_at`;
+      - Cancelar → `cancelada`: solo quien la pidió; comentario opcional;
+      - "Ir a corregir": no existe un estado intermedio → solo navega (no cambia estado);
+      - `campo` ∈ centro_costo, cliente, contrato_comercial, tipo_contrato, modalidad,
+        dias_trabajo, sueldo_basico, bonos (los dos últimos exigen `cargo_id`).
 - [ ] **Kanban: ¿mostrar solicitudes cerradas** (`cerrada_at` no nulo)? Hoy se devuelven todas.
 - [ ] **Completitud: criterio de "composición salarial completa".** Cada fila de `servicio_cargos`
       ya exige `haber_basico_diurno`; no está definido qué la hace incompleta. No se evalúa
@@ -35,8 +56,6 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
       - si la cantidad de una rectificación reemplaza o ajusta la de la entrega corregida (hoy se lista aparte);
       - si un requerimiento con `cantidad_personas` NULL cuenta como 1 (hoy no se suma; se informa
         `registros_sin_cantidad`).
-- [ ] **`historial`: uso de `grupo_edicion`, `categoria_desvio`, `detalle_desvio`.** El PATCH solo
-      escribe `campo`, valores, `usuario_id` y `glosa` (opcional).
 - [ ] **Filas de `servicio_cargos` con `servicio_id` NULL:** qué representan. La matriz las excluye.
 - [ ] **Overrides por operador** (`operador_composicion_override`): no se usan aún en ningún endpoint.
 
@@ -44,9 +63,6 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 
 - [ ] **Rol de conexión:** el usuario de `DATABASE_URL` debe poder `SET ROLE authenticated`
       (la API lo verifica al arrancar).
-- [ ] **Trigger de historial:** si un trigger ya escribe `requerimiento_historial` al actualizar
-      `requerimientos`, el INSERT explícito del PATCH lo duplicaría → quitar el INSERT.
-- [ ] **Formato de fechas en `requerimiento_historial.valor_*`** usado por Lovable (aquí: `YYYY-MM-DD`).
 - [ ] **Políticas RLS reales:** confirmar que permiten a RR.HH. `UPDATE requerimientos` e
       `INSERT requerimiento_historial`, y si el solicitante ve el servicio de su solicitud de cambio
       (si no, ver el punto siguiente).
@@ -54,6 +70,7 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
       saber si está activo; hoy la tarjeta se muestra (con nombre de servicio vacío).
 - [ ] **Tipos de columnas:** se asumió `uuid` en todas las PK/FK; montos, porcentajes y fechas se
       castean en SQL. Si `fecha_*` son `timestamptz`, definir la zona horaria de corte del día.
+- [x] **Conexión real:** pooler de Supabase en modo sesión (puerto 5432), usuario `postgres.<ref>`.
 - [ ] **Pooler:** usar puerto 5432. Con modo transacción (6543), además de la transacción explícita
       (ya implementada), revisar el uso de sentencias preparadas de SQLx.
 - [ ] **Baseline:** pegar el `pg_dump --schema-only --schema=public` real en
@@ -79,6 +96,20 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 - [ ] Generar los tipos de la API desde OpenAPI en lugar de mantenerlos a mano.
 
 ## Resuelto
+
+- [x] **Pantalla de aprobación: solo `rrhh_admin`** (decisión 2026-11-03). El resto de los usuarios
+      consulta en "Mis requerimientos" si su requerimiento fue aprobado o no (`estado`).
+      La autorización sigue en la base (`p2_acceso`); la restricción de la pantalla es de interfaz.
+
+- [x] **Edición de requerimientos** (verificado en producción 2026-11-03): el PATCH llama a
+      `editar_requerimiento_con_historial` (glosa obligatoria, versión `updated_at`, desvío);
+      el historial lo escribe el trigger `p2_auditar_requerimiento` (se quitó el INSERT propio,
+      que duplicaba y además fallaba por la glosa obligatoria). Copia textual en el fixture
+      `p2_edicion.sql`. Fechas del historial: `YYYY-MM-DD` (las escribe la base).
+- [x] **Reglas de la base para requerimientos:** `estado` ∈ pendiente, en_proceso, aprobado,
+      rechazado, cerrado; `motivo` ∈ Renuncia, Baja médica, Nuevo proyecto, Reposición, Crecimiento.
+- [x] **Parámetros salariales:** claves `salario_minimo_nacional` (vigente Bs 3600 desde
+      2026-10-28) y `recargo_nocturno_pct` (0.25). Vigente = mayor `vigente_desde <= hoy`.
 
 - [x] Login propio con argon2id (reemplaza Supabase Auth; el código JWKS quedó en el historial de git).
 - [x] Autorización: delegada a RLS (`SET LOCAL ROLE authenticated` + `request.jwt.claims` por
