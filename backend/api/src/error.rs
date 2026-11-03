@@ -2,7 +2,7 @@
 
 use axum::{
     Json,
-    http::StatusCode,
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use db::{DbError, PgPool};
@@ -13,6 +13,10 @@ use crate::auth::AuthUser;
 
 #[derive(Debug)]
 pub enum ApiError {
+    /// Sin token, token inválido o credenciales incorrectas (mensaje siempre genérico).
+    Unauthorized,
+    /// Demasiados intentos: `Retry-After` en segundos.
+    TooManyRequests(u64),
     /// RLS / permisos de Postgres rechazaron la operación.
     Forbidden,
     NotFound,
@@ -24,7 +28,16 @@ pub enum ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        let mut extra: Option<(header::HeaderName, String)> = None;
         let (status, codigo, detalle) = match self {
+            Self::Unauthorized => {
+                extra = Some((header::WWW_AUTHENTICATE, "Bearer".into()));
+                (StatusCode::UNAUTHORIZED, "unauthorized", None)
+            }
+            Self::TooManyRequests(seg) => {
+                extra = Some((header::RETRY_AFTER, seg.to_string()));
+                (StatusCode::TOO_MANY_REQUESTS, "too_many_requests", None)
+            }
             Self::Forbidden => (StatusCode::FORBIDDEN, "forbidden", None),
             Self::NotFound => (StatusCode::NOT_FOUND, "not_found", None),
             Self::BadRequest(d) => (StatusCode::BAD_REQUEST, "bad_request", Some(d)),
@@ -42,7 +55,11 @@ impl IntoResponse for ApiError {
             Some(d) => json!({ "error": codigo, "detalle": d }),
             None => json!({ "error": codigo }),
         };
-        (status, Json(body)).into_response()
+        let mut res = (status, Json(body)).into_response();
+        if let Some((nombre, Ok(v))) = extra.map(|(n, v)| (n, v.parse())) {
+            res.headers_mut().insert(nombre, v);
+        }
+        res
     }
 }
 
