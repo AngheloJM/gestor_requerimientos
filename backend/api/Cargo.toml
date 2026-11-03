@@ -20,12 +20,17 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 uuid = { workspace = true, features = ["serde"] }
 validator = { version = "0.21.0", features = ["derive"] }
-tower-http = { version = "0.6", features = ["cors"] }
-reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
+tower-http = { version = "0.6", features = ["cors", "set-header"] }
+argon2 = { version = "0.5", features = ["std"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+sha2 = "0.10"
+base64 = "0.22"
+rpassword = "7.5.4"
+axum-extra = { version = "0.12.6", features = ["cookie"] }
+time = "0.3"
 
 [dev-dependencies]
-base64 = "0.23.1"
+base64 = "0.22"
 http-body-util = "0.1.5"
-p256 = "0.13"
 rust_decimal_macros = { workspace = true }
 tower = { version = "0.5.3", features = ["util"] }
