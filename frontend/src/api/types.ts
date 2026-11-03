@@ -67,8 +67,8 @@ export interface FilaMatriz {
   haber_basico_diurno: Monto
   haber_basico_nocturno: Monto | null
   total_haberes: Monto
-  /** null hasta que exista el resultado mensual de métricas (pendiente de negocio). */
-  total_ganado: Monto | null
+  /** Haberes + suma de monto_bono configurados (sin ajustar por cumplimiento real). */
+  total_ganado: Monto
   metricas: Metrica[]
 }
 
@@ -109,13 +109,27 @@ export interface Aprobacion {
   fecha_fin_tentativa: FechaIso | null
   fecha_fin: FechaIso | null
   ultima_modificacion: { usuario_id: Uuid | null; fecha: Timestamp } | null
+  /** updated_at con microsegundos: devolverlo tal cual al editar (control de concurrencia). */
+  version: Timestamp
 }
+
+/** Categorías de desvío admitidas por la base (p2_validar_desvio). */
+export type CategoriaDesvio =
+  | 'falla_capacitacion'
+  | 'rechazo_operaciones'
+  | 'ratio_reclutamiento'
+  | 'cambio_cliente'
 
 export interface EditarFechaFin {
   id: Uuid
   /** null = quitar la fecha de fin. */
   fecha_fin: FechaIso | null
-  glosa?: string
+  version: Timestamp
+  /** Obligatoria: 3 a 2000 caracteres. */
+  glosa: string
+  /** Van juntas: categoría + explicación (3 a 2000 caracteres). */
+  categoria_desvio?: CategoriaDesvio
+  detalle_desvio?: string
 }
 
 export interface EntradaHistorial {
