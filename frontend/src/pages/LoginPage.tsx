@@ -5,8 +5,8 @@ import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/useAuth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Logo } from '@/components/marca/Logo'
 import { Label } from '@/components/ui/label'
 
 export function LoginPage() {
@@ -39,16 +39,29 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Iniciar sesión</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="grid gap-4">
+    <div className="grid min-h-svh lg:grid-cols-2">
+      <aside className="relative hidden overflow-hidden bg-nova-navy p-12 text-white lg:flex lg:flex-col">
+        <Logo claro />
+        <div className="mt-auto max-w-md">
+          <h1 className="text-4xl leading-tight font-semibold text-white">
+            Tecnología que conecta. <span className="text-nova-naranja-suave">Experiencias</span> que transforman.
+          </h1>
+          <p className="mt-4 text-white/70">
+            Requerimientos de personal, matriz de servicios y seguimiento en un solo lugar.
+          </p>
+        </div>
+        <div aria-hidden className="absolute -right-24 -bottom-24 size-80 rounded-full bg-nova-azul/40 blur-3xl" />
+      </aside>
+
+      <main className="flex items-center justify-center bg-background p-6">
+        <div className="w-full max-w-sm">
+          <Logo className="mb-8 lg:hidden" />
+          <h2 className="text-2xl font-semibold">Iniciar sesión</h2>
+          <p className="mt-1 text-sm text-nova-gris">Ingresá con tu correo corporativo.</p>
+          <form onSubmit={onSubmit} className="mt-6 grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" autoComplete="email" required />
+              <Input id="email" name="email" type="email" autoComplete="email" required className="h-11 bg-white" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Contraseña</Label>
@@ -58,6 +71,7 @@ export function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
+                className="h-11 bg-white"
               />
             </div>
             {error && (
@@ -65,12 +79,12 @@ export function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" disabled={enviando}>
+            <Button type="submit" disabled={enviando} className="h-11 text-base">
               {enviando ? 'Ingresando…' : 'Ingresar'}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </main>
     </div>
   )
 }
