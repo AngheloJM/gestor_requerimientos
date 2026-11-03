@@ -106,7 +106,7 @@ CREATE TABLE usuario_servicios (
 CREATE TABLE requerimientos (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     numero bigint GENERATED ALWAYS AS IDENTITY,
-    folio text,
+    folio text GENERATED ALWAYS AS ('REQ-' || lpad(numero::text, 6, '0')) STORED,
     solicitante_id uuid,
     servicio_id uuid REFERENCES servicios(id),
     cargo_id uuid NOT NULL REFERENCES cargos(id),

@@ -64,3 +64,190 @@ async fn mios_filtra_por_solicitante_dentro_de_lo_visible(pool: db::PgPool) {
     assert_eq!(ids(&pool, COSTOS, false).await.len(), 3);
     assert!(ids(&pool, COSTOS, true).await.is_empty());
 }
+
+// ---------------------------------------------------------------------------------------
+// Creación: usa la copia textual de `crear_requerimiento_con_snapshot` (fixture p2_creacion).
+// ---------------------------------------------------------------------------------------
+
+use chrono::NaiveDate;
+use db::{
+    DbError,
+    requerimientos::{crear, opciones},
+};
+use domain::{BonoExtra, CargoId, NuevoRequerimiento, ServicioId};
+use rust_decimal_macros::dec;
+
+const SOPORTE: &str = "00000000-0000-0000-0000-000000000051";
+const CALL_CENTER: &str = "00000000-0000-0000-0000-000000000052";
+const TECNICO: &str = "00000000-0000-0000-0000-000000000061";
+const OPERADOR: &str = "00000000-0000-0000-0000-000000000062";
+const EXTERNO: &str = "00000000-0000-0000-0000-aaaa00000005";
+
+fn f(m: u32, d: u32) -> NaiveDate {
+    NaiveDate::from_ymd_opt(2026, m, d).unwrap()
+}
+
+fn nuevo(servicio: &str, cargo: &str) -> NuevoRequerimiento {
+    NuevoRequerimiento {
+        tipo: "nuevo".into(),
+        servicio_id: Some(ServicioId(uid(servicio))),
+        cargo_id: CargoId(uid(cargo)),
+        cantidad: 2,
+        motivo: "Crecimiento".into(),
+        fecha_inicio_capacitacion: f(12, 1),
+        fecha_inicio_operacion: f(12, 15),
+        fecha_fin: None,
+        comentarios: Some("  turno tarde  ".into()),
+        bonos_extra: vec![],
+    }
+}
+
+async fn crear_como(
+    pool: &db::PgPool,
+    usuario: &str,
+    n: &NuevoRequerimiento,
+) -> Result<String, DbError> {
+    let mut tx = como(pool, usuario).await;
+    let r = crear(&mut tx, n).await;
+    if r.is_ok() {
+        tx.commit().await.unwrap();
+    }
+    r
+}
+
+fn regla(r: Result<String, DbError>) -> String {
+    r.unwrap_err()
+        .regla_de_negocio()
+        .expect("regla de negocio")
+        .to_owned()
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_creacion")
+)]
+async fn opciones_segun_servicios_del_usuario(pool: db::PgPool) {
+    let mut tx = como(&pool, RRHH).await;
+    let o = opciones(&mut tx).await.unwrap();
+    let nombres: Vec<_> = o.servicios.iter().map(|s| s.nombre.as_str()).collect();
+    assert!(!nombres.contains(&"Legado"), "servicio inactivo excluido");
+    assert!(
+        !nombres.contains(&"Instalaciones"),
+        "sin cargos configurados"
+    );
+    let call = o
+        .servicios
+        .iter()
+        .find(|s| s.nombre == "Call center")
+        .unwrap();
+    let cargos: Vec<_> = call.cargos.iter().map(|c| c.nombre.as_str()).collect();
+    assert_eq!(cargos, ["Agente", "Operador"]);
+    drop(tx);
+
+    let mut tx = como(&pool, ESTANDAR).await;
+    let o = opciones(&mut tx).await.unwrap();
+    let nombres: Vec<_> = o.servicios.iter().map(|s| s.nombre.as_str()).collect();
+    assert_eq!(nombres, ["Soporte"], "solo servicios asignados");
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_creacion")
+)]
+async fn crea_pendiente_con_snapshot_y_bonos_extra(pool: db::PgPool) {
+    let mut n = nuevo(SOPORTE, TECNICO);
+    n.bonos_extra = vec![BonoExtra {
+        nombre: "Movilidad".into(),
+        monto: dec!(150.50),
+        motivo: "Zona alejada".into(),
+    }];
+    let folio = crear_como(&pool, ESTANDAR, &n).await.unwrap();
+    assert!(
+        folio.starts_with("REQ-"),
+        "folio generado por la base: {folio}"
+    );
+
+    let (sol, estado, haber, bonos, coment, cap): (
+        uuid::Uuid,
+        String,
+        rust_decimal::Decimal,
+        serde_json::Value,
+        Option<String>,
+        NaiveDate,
+    ) = sqlx::query_as(
+        "SELECT solicitante_id, estado, haber_basico_diurno_snap, bonos_snap,
+                comentarios_adicionales, fecha_inicio_capacitacion
+         FROM requerimientos WHERE folio = $1",
+    )
+    .bind(&folio)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(sol, uid(ESTANDAR));
+    assert_eq!(estado, "pendiente");
+    assert_eq!(haber, dec!(2500.00), "sueldo congelado del servicio+cargo");
+    assert_eq!(coment.as_deref(), Some("turno tarde"));
+    assert_eq!(cap, f(12, 1), "cargo sin tipo: se respeta la fecha enviada");
+    assert_eq!(
+        bonos,
+        serde_json::json!([{"tipo": "extra", "nombre": "Movilidad", "monto": 150.50, "motivo": "Zona alejada"}])
+    );
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_creacion")
+)]
+async fn capacitacion_se_calcula_hacia_atras(pool: db::PgPool) {
+    sqlx::query("UPDATE cargos SET tipo = 'operativo' WHERE id = $1")
+        .bind(uid(TECNICO))
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE servicios SET tiempo_capacitacion_dias = 10 WHERE id = $1")
+        .bind(uid(SOPORTE))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let folio = crear_como(&pool, ESTANDAR, &nuevo(SOPORTE, TECNICO))
+        .await
+        .unwrap();
+    let cap: NaiveDate =
+        sqlx::query_scalar("SELECT fecha_inicio_capacitacion FROM requerimientos WHERE folio = $1")
+            .bind(&folio)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(cap, f(12, 5), "15/12 − 10 días");
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_creacion")
+)]
+async fn reglas_de_creacion_de_la_base(pool: db::PgPool) {
+    assert_eq!(
+        regla(crear_como(&pool, ESTANDAR, &nuevo(CALL_CENTER, OPERADOR)).await),
+        "No tienes acceso a ese servicio activo."
+    );
+    assert_eq!(
+        regla(crear_como(&pool, EXTERNO, &nuevo(SOPORTE, TECNICO)).await),
+        "Tu rol no permite crear requerimientos."
+    );
+    let mut n = nuevo(SOPORTE, TECNICO);
+    n.motivo = "Otro".into();
+    assert_eq!(
+        regla(crear_como(&pool, ESTANDAR, &n).await),
+        "Elige un motivo."
+    );
+    let mut n = nuevo(SOPORTE, OPERADOR);
+    n.tipo = "nuevo".into();
+    assert_eq!(
+        regla(crear_como(&pool, RRHH, &n).await),
+        "Ese cargo no pertenece al servicio elegido."
+    );
+}
