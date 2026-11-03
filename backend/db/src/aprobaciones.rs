@@ -36,12 +36,16 @@ SELECT
     r.fecha_inicio::date           AS fecha_inicio,
     r.fecha_fin_tentativa::date    AS fecha_fin_tentativa,
     r.fecha_fin::date              AS fecha_fin,
+    r.fecha_inicio_operacion::date AS fecha_inicio_operacion,
+    r.motivo::text                 AS motivo,
+    u.nombre::text                 AS solicitante_nombre,
     r.updated_at::timestamptz      AS version,
     h.usuario_id                   AS modificado_por,
     h.created_at                   AS modificado_en
 FROM requerimientos r
 LEFT JOIN servicios s ON s.id = r.servicio_id
 LEFT JOIN cargos    c ON c.id = r.cargo_id
+LEFT JOIN usuarios  u ON u.id = r.solicitante_id
 LEFT JOIN LATERAL (
     SELECT x.usuario_id, x.created_at::timestamptz AS created_at
     FROM requerimiento_historial x
@@ -80,6 +84,9 @@ struct AprobacionRow {
     fecha_inicio: NaiveDate,
     fecha_fin_tentativa: Option<NaiveDate>,
     fecha_fin: Option<NaiveDate>,
+    fecha_inicio_operacion: Option<NaiveDate>,
+    motivo: Option<String>,
+    solicitante_nombre: Option<String>,
     modificado_por: Option<Uuid>,
     modificado_en: Option<DateTime<Utc>>,
     version: DateTime<Utc>,
@@ -106,6 +113,9 @@ impl TryFrom<AprobacionRow> for Aprobacion {
             fecha_inicio: r.fecha_inicio,
             fecha_fin_tentativa: r.fecha_fin_tentativa,
             fecha_fin: r.fecha_fin,
+            fecha_inicio_operacion: r.fecha_inicio_operacion,
+            motivo: r.motivo,
+            solicitante_nombre: r.solicitante_nombre,
             ultima_modificacion: r.modificado_en.map(|fecha| Modificacion {
                 usuario_id: r.modificado_por.map(Into::into),
                 fecha,
@@ -221,10 +231,13 @@ impl From<DbError> for ActualizarError {
     }
 }
 
-/// Datos de una edición de `fecha_fin`.
+/// Datos de una edición (vía `editar_requerimiento_con_historial`). Al menos un campo.
 #[derive(Debug, Clone, Copy)]
-pub struct EdicionFechaFin<'a> {
-    pub nueva: Option<NaiveDate>,
+pub struct EdicionRequerimiento<'a> {
+    /// `Some(None)` = quitar la fecha de fin; `None` = no tocarla.
+    pub fecha_fin: Option<Option<NaiveDate>>,
+    /// Nuevo `estado` (aprobar / rechazar…). Solo RR.HH. (lo valida la base).
+    pub estado: Option<&'a str>,
     /// `updated_at` que el cliente leyó (`Aprobacion::version`).
     pub version: DateTime<Utc>,
     /// Obligatoria (3–2000 caracteres; lo valida la base).
@@ -235,41 +248,56 @@ pub struct EdicionFechaFin<'a> {
     pub detalle_desvio: Option<&'a str>,
 }
 
-/// Edita `fecha_fin` vía `editar_requerimiento_con_historial`, dentro de la transacción del
-/// request (el llamador hace commit). Si el valor no cambia, no escribe nada (la base
-/// rechazaría "No hay cambios para guardar").
-pub async fn actualizar_fecha_fin(
+const QUERY_EDITAR: &str = r#"
+SELECT public.editar_requerimiento_con_historial(
+    $1,
+    CASE WHEN $2 THEN jsonb_build_object('fecha_fin', $3::text) ELSE '{}'::jsonb END
+    || CASE WHEN $4::text IS NOT NULL THEN jsonb_build_object('estado', $4::text) ELSE '{}'::jsonb END,
+    $5, $6, $7, $8)
+"#;
+
+/// Aplica la edición dentro de la transacción del request (el llamador hace commit). Los
+/// campos que no cambian se omiten; si ninguno cambia no se escribe nada (la base rechazaría
+/// "No hay cambios para guardar").
+pub async fn actualizar(
     conn: &mut PgConnection,
     id: RequerimientoId,
-    e: EdicionFechaFin<'_>,
+    e: EdicionRequerimiento<'_>,
 ) -> Result<Aprobacion, ActualizarError> {
     let uid = Uuid::from(id);
 
-    let visible: Option<(NaiveDate, Option<NaiveDate>)> = sqlx::query_as(
-        "SELECT fecha_inicio::date, fecha_fin::date FROM requerimientos WHERE id = $1",
+    let visible: Option<(NaiveDate, Option<NaiveDate>, Option<String>)> = sqlx::query_as(
+        "SELECT fecha_inicio::date, fecha_fin::date, estado::text FROM requerimientos WHERE id = $1",
     )
     .bind(uid)
     .fetch_optional(&mut *conn)
     .await?;
-    let Some((fecha_inicio, anterior)) = visible else {
+    let Some((fecha_inicio, fin_actual, estado_actual)) = visible else {
         return Err(ActualizarError::NoEncontrado);
     };
 
-    validar_fecha_fin(fecha_inicio, e.nueva).map_err(ActualizarError::Validacion)?;
+    if let Some(nueva) = e.fecha_fin {
+        validar_fecha_fin(fecha_inicio, nueva).map_err(ActualizarError::Validacion)?;
+    }
+    let fecha_fin = e.fecha_fin.filter(|f| *f != fin_actual);
+    let estado = e.estado.filter(|s| Some(*s) != estado_actual.as_deref());
 
-    if anterior != e.nueva {
-        sqlx::query(
-            "SELECT public.editar_requerimiento_con_historial(\
-                 $1, jsonb_build_object('fecha_fin', $2::text), $3, $4, $5, $6)",
-        )
-        .bind(uid)
-        .bind(e.nueva.map(|f| f.format("%Y-%m-%d").to_string()))
-        .bind(e.version)
-        .bind(e.glosa)
-        .bind(e.categoria_desvio)
-        .bind(e.detalle_desvio)
-        .execute(&mut *conn)
-        .await?;
+    if fecha_fin.is_some() || estado.is_some() {
+        sqlx::query(QUERY_EDITAR)
+            .bind(uid)
+            .bind(fecha_fin.is_some())
+            .bind(
+                fecha_fin
+                    .flatten()
+                    .map(|f| f.format("%Y-%m-%d").to_string()),
+            )
+            .bind(estado)
+            .bind(e.version)
+            .bind(e.glosa)
+            .bind(e.categoria_desvio)
+            .bind(e.detalle_desvio)
+            .execute(&mut *conn)
+            .await?;
     }
 
     obtener(conn, id)

@@ -122,7 +122,7 @@ fn protected_routes(state: AppState) -> Router<AppState> {
                 .delete(roles::eliminar),
         )
         .route("/aprobaciones", get(aprobaciones::listar))
-        .route("/aprobaciones/{id}", patch(aprobaciones::editar_fecha_fin))
+        .route("/aprobaciones/{id}", patch(aprobaciones::editar))
         .route("/aprobaciones/{id}/historial", get(aprobaciones::historial))
         .layer(middleware::from_fn_with_state(state, auth::require_auth))
 }

@@ -29,6 +29,10 @@ pub struct Aprobacion {
     pub fecha_fin_tentativa: Option<NaiveDate>,
     /// Editable por RR.HH. (`requerimientos.fecha_fin`).
     pub fecha_fin: Option<NaiveDate>,
+    pub fecha_inicio_operacion: Option<NaiveDate>,
+    pub motivo: Option<String>,
+    /// Nombre del solicitante (si RLS permite ver su fila en `usuarios`).
+    pub solicitante_nombre: Option<String>,
     pub ultima_modificacion: Option<Modificacion>,
     /// `requerimientos.updated_at`: versión para el control de concurrencia de
     /// `editar_requerimiento_con_historial` (el cliente la devuelve al editar).

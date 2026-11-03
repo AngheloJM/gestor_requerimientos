@@ -1,7 +1,9 @@
 //! Aprobaciones (autorización: RLS):
 //!   GET   /aprobaciones
-//!   PATCH /aprobaciones/{id}            body: {"fecha_fin": "YYYY-MM-DD" | null, "version": "<de GET>",
-//!                                              "glosa": "...", "categoria_desvio"?, "detalle_desvio"?}
+//!   PATCH /aprobaciones/{id}            body: {"fecha_fin"?: "YYYY-MM-DD" | null, "estado"?: "aprobado",
+//!                                              "version": "<de GET>", "glosa": "...",
+//!                                              "categoria_desvio"?, "detalle_desvio"?}
+//!                                       (al menos `fecha_fin` o `estado`)
 //!   GET   /aprobaciones/{id}/historial  (requerimiento_historial completo)
 
 use axum::{
@@ -11,9 +13,9 @@ use axum::{
 use chrono::NaiveDate;
 use db::{
     PgPool,
-    aprobaciones::{ActualizarError, EdicionFechaFin},
+    aprobaciones::{ActualizarError, EdicionRequerimiento},
 };
-use domain::{Aprobacion, EntradaHistorial};
+use domain::{Aprobacion, EntradaHistorial, requerimiento::ESTADOS};
 use serde::{Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
 
@@ -47,6 +49,9 @@ pub struct AprobacionDto {
     pub fecha_inicio: NaiveDate,
     pub fecha_fin_tentativa: Option<NaiveDate>,
     pub fecha_fin: Option<NaiveDate>,
+    pub fecha_inicio_operacion: Option<NaiveDate>,
+    pub motivo: Option<String>,
+    pub solicitante: Option<String>,
     pub ultima_modificacion: Option<ModificacionDto>,
     /// `updated_at` con precisión completa (microsegundos): devolverla tal cual en el PATCH.
     pub version: String,
@@ -66,6 +71,9 @@ impl From<Aprobacion> for AprobacionDto {
             fecha_inicio: a.fecha_inicio,
             fecha_fin_tentativa: a.fecha_fin_tentativa,
             fecha_fin: a.fecha_fin,
+            fecha_inicio_operacion: a.fecha_inicio_operacion,
+            motivo: a.motivo,
+            solicitante: a.solicitante_nombre,
             ultima_modificacion: a.ultima_modificacion.map(|m| ModificacionDto {
                 usuario_id: m.usuario_id.map(Into::into),
                 fecha: rfc3339(m.fecha),
@@ -108,13 +116,14 @@ impl From<EntradaHistorial> for HistorialDto {
     }
 }
 
-/// `fecha_fin` debe venir explícitamente: ausente → 400; `null` → quitar la fecha.
+/// `fecha_fin`: ausente = no tocar; `null` = quitar la fecha. `estado`: nuevo estado.
 /// `version` y `glosa` son obligatorias (las exige `editar_requerimiento_con_historial`).
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PatchAprobacion {
     #[serde(default, deserialize_with = "presente")]
     pub fecha_fin: Option<Option<NaiveDate>>,
+    pub estado: Option<String>,
     pub version: chrono::DateTime<chrono::Utc>,
     pub glosa: String,
     pub categoria_desvio: Option<String>,
@@ -151,17 +160,28 @@ pub async fn historial(
     Ok(Json(h.into_iter().map(HistorialDto::from).collect()))
 }
 
-pub async fn editar_fecha_fin(
+pub async fn editar(
     State(pool): State<PgPool>,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(body): Json<PatchAprobacion>,
 ) -> ApiResult<Json<AprobacionDto>> {
-    let nueva = body.fecha_fin.ok_or_else(|| {
-        ApiError::BadRequest("falta el campo `fecha_fin` (usar null para quitarla)".into())
-    })?;
-    let edicion = EdicionFechaFin {
-        nueva,
+    if body.fecha_fin.is_none() && body.estado.is_none() {
+        return Err(ApiError::BadRequest(
+            "indicar `fecha_fin` (null para quitarla) y/o `estado`".into(),
+        ));
+    }
+    if let Some(e) = body.estado.as_deref()
+        && !ESTADOS.contains(&e)
+    {
+        return Err(ApiError::Unprocessable(format!(
+            "estado inválido: {e} (admitidos: {})",
+            ESTADOS.join(", ")
+        )));
+    }
+    let edicion = EdicionRequerimiento {
+        fecha_fin: body.fecha_fin,
+        estado: body.estado.as_deref(),
         version: body.version,
         glosa: &body.glosa,
         categoria_desvio: body.categoria_desvio.as_deref(),
@@ -169,7 +189,7 @@ pub async fn editar_fecha_fin(
     };
 
     let mut tx = tx_usuario(&pool, &user).await?;
-    let a = db::aprobaciones::actualizar_fecha_fin(&mut tx, id.into(), edicion)
+    let a = db::aprobaciones::actualizar(&mut tx, id.into(), edicion)
         .await
         .map_err(|e| match e {
             ActualizarError::NoEncontrado => ApiError::NotFound,
@@ -183,7 +203,10 @@ pub async fn editar_fecha_fin(
         })?;
     tx.commit().await?;
 
-    tracing::info!(requerimiento_id = %id, usuario_id = %user.user_id, fecha_fin = ?nueva, "fecha_fin editada");
+    tracing::info!(
+        requerimiento_id = %id, usuario_id = %user.user_id,
+        fecha_fin = ?body.fecha_fin, estado = ?body.estado, "requerimiento editado"
+    );
     Ok(Json(AprobacionDto::from(a)))
 }
 
@@ -200,6 +223,8 @@ mod tests {
     #[test]
     fn body_distingue_ausente_null_y_fecha() {
         assert_eq!(parse(&format!("{{{V}}}")).unwrap().fecha_fin, None);
+        let p = parse(&format!(r#"{{"estado":"aprobado",{V}}}"#)).unwrap();
+        assert_eq!((p.fecha_fin, p.estado.as_deref()), (None, Some("aprobado")));
         assert_eq!(
             parse(&format!(r#"{{"fecha_fin":null,{V}}}"#))
                 .unwrap()
