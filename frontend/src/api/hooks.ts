@@ -8,7 +8,7 @@ import { api } from '@/api/instance'
 import type {
   Almanaque,
   Aprobacion,
-  EditarFechaFin,
+  EditarRequerimiento,
   EntradaHistorial,
   FilaMatriz,
   FiltrosMatriz,
@@ -120,13 +120,13 @@ export function useHistorialAprobacion(id: string | null) {
 }
 
 /**
- * Edita fecha_fin (queda en requerimiento_historial). Al terminar actualiza la fila en cache e
- * invalida su historial y el almanaque.
+ * Edita estado (aprobar/rechazar) y/o fecha_fin vía la función de la base; queda en
+ * requerimiento_historial. Actualiza la fila en cache e invalida historial, almanaque y listas.
  */
-export function useEditarFechaFin() {
+export function useEditarRequerimiento() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: EditarFechaFin) =>
+    mutationFn: ({ id, ...body }: EditarRequerimiento) =>
       api.patch<Aprobacion>(`/aprobaciones/${encodeURIComponent(id)}`, body),
     onSuccess: (actualizada) => {
       qc.setQueryData<Aprobacion[]>(queryKeys.aprobaciones, (prev) =>

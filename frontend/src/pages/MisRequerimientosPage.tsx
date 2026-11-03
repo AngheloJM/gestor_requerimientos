@@ -3,30 +3,14 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { type Requerimiento, useMe, useRequerimientos } from '@/api'
-import { EstadoBadge, type Tono } from '@/components/EstadoBadge'
+import { ESTADOS_REQUERIMIENTO, EstadoRequerimiento, etiquetaTipo } from '@/components/EstadoRequerimiento'
 import { ErrorApi } from '@/components/ErrorApi'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFecha } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-/** Estados de la base → etiqueta y color. Un valor desconocido se muestra tal cual. */
-const ESTADOS: Record<string, { etiqueta: string; tono: Tono }> = {
-  pendiente: { etiqueta: 'Pendiente', tono: 'advertencia' },
-  en_proceso: { etiqueta: 'En proceso', tono: 'info' },
-  aprobado: { etiqueta: 'Aprobado', tono: 'exito' },
-  rechazado: { etiqueta: 'Rechazado', tono: 'error' },
-  cerrado: { etiqueta: 'Cerrado', tono: 'neutral' },
-}
-
-function Estado({ valor }: { valor: string | null }) {
-  if (!valor) return <EstadoBadge>Sin estado</EstadoBadge>
-  const e = ESTADOS[valor]
-  return <EstadoBadge tono={e?.tono ?? 'neutral'}>{e?.etiqueta ?? valor}</EstadoBadge>
-}
-
 const texto = (v: string | null | undefined) => v ?? '—'
-const capitalizar = (v: string | null) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : '—')
 const folio = (r: Requerimiento) => r.folio ?? `#${r.numero}`
 const creado = (r: Requerimiento) => formatFecha(r.creado.slice(0, 10))
 
@@ -84,14 +68,14 @@ function Tabla({ filas }: { filas: Requerimiento[] }) {
               </td>
               <td className="px-4 py-3">{texto(r.servicio?.nombre)}</td>
               <td className="px-4 py-3">{texto(r.cargo.nombre)}</td>
-              <td className="px-4 py-3">{capitalizar(r.tipo)}</td>
+              <td className="px-4 py-3">{etiquetaTipo(r.tipo)}</td>
               <td className="px-4 py-3 tabular-nums">{r.cantidad ?? '—'}</td>
               <td className="px-4 py-3 whitespace-nowrap">
                 {r.fecha_inicio_operacion ? formatFecha(r.fecha_inicio_operacion) : <span className="text-nova-gris">Sin informar</span>}
               </td>
               <td className="px-4 py-3 whitespace-nowrap">{creado(r)}</td>
               <td className="px-4 py-3">
-                <Estado valor={r.estado} />
+                <EstadoRequerimiento valor={r.estado} />
               </td>
             </tr>
           ))}
@@ -113,11 +97,11 @@ function Tarjetas({ filas }: { filas: Requerimiento[] }) {
                 {texto(r.servicio?.nombre)} · {texto(r.cargo.nombre)}
               </p>
             </div>
-            <Estado valor={r.estado} />
+            <EstadoRequerimiento valor={r.estado} />
           </div>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
             <dt className="text-nova-gris">Tipo</dt>
-            <dd>{capitalizar(r.tipo)}</dd>
+            <dd>{etiquetaTipo(r.tipo)}</dd>
             <dt className="text-nova-gris">Cantidad</dt>
             <dd>{r.cantidad ?? '—'}</dd>
             <dt className="text-nova-gris">Inicio de operación</dt>
@@ -185,7 +169,7 @@ export function MisRequerimientosPage() {
           ]}
         />
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
-          {[['todos', 'Todos'] as const, ...Object.entries(ESTADOS).map(([k, v]) => [k, v.etiqueta] as const)].map(
+          {[['todos', 'Todos'] as const, ...Object.entries(ESTADOS_REQUERIMIENTO).map(([k, v]) => [k, v.etiqueta] as const)].map(
             ([k, etiqueta]) => {
               const n = k === 'todos' ? (data?.length ?? 0) : (conteo[k] ?? 0)
               if (k !== 'todos' && n === 0) return null

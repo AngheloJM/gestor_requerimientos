@@ -220,6 +220,10 @@ export interface Aprobacion {
   fecha_inicio: FechaIso
   fecha_fin_tentativa: FechaIso | null
   fecha_fin: FechaIso | null
+  fecha_inicio_operacion: FechaIso | null
+  motivo: string | null
+  /** Nombre del solicitante (null si no es visible). */
+  solicitante: string | null
   ultima_modificacion: { usuario_id: Uuid | null; fecha: Timestamp } | null
   /** updated_at con microsegundos: devolverlo tal cual al editar (control de concurrencia). */
   version: Timestamp
@@ -232,10 +236,13 @@ export type CategoriaDesvio =
   | 'ratio_reclutamiento'
   | 'cambio_cliente'
 
-export interface EditarFechaFin {
+/** Al menos `fecha_fin` o `estado`. La glosa queda en el historial. */
+export interface EditarRequerimiento {
   id: Uuid
-  /** null = quitar la fecha de fin. */
-  fecha_fin: FechaIso | null
+  /** Ausente = no tocar; null = quitar la fecha de fin. */
+  fecha_fin?: FechaIso | null
+  /** Solo RR.HH. (lo valida la base). */
+  estado?: EstadoRequerimiento
   version: Timestamp
   /** Obligatoria: 3 a 2000 caracteres. */
   glosa: string
