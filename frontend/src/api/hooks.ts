@@ -16,8 +16,10 @@ import type {
   GuardarUsuario,
   CrearRequerimiento,
   Me,
+  NuevoValorParametro,
   OpcionesRequerimiento,
   OpcionesUsuario,
+  Parametros,
   Permiso,
   Requerimiento,
   RolConfigurable,
@@ -39,6 +41,7 @@ export const queryKeys = {
   permisos: ['permisos'] as const,
   roles: ['roles'] as const,
   usuarios: ['usuarios'] as const,
+  parametros: ['parametros-salariales'] as const,
   rol: (id: string) => ['roles', id] as const,
 }
 
@@ -219,5 +222,23 @@ export function useGuardarUsuario(id: string) {
       qc.setQueryData<UsuarioAdmin[]>(queryKeys.usuarios, (prev) => prev?.map((x) => (x.id === u.id ? u : x)))
       void qc.invalidateQueries({ queryKey: queryKeys.me })
     },
+  })
+}
+
+// --- Parámetros salariales ---------------------------------------------------------------
+
+export function useParametros() {
+  return useQuery({
+    queryKey: queryKeys.parametros,
+    queryFn: ({ signal }) => api.get<Parametros>('/parametros-salariales', undefined, signal),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useRegistrarParametro() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: NuevoValorParametro) => api.post<void>('/parametros-salariales', body),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.parametros }),
   })
 }

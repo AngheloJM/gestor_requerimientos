@@ -238,6 +238,29 @@ export interface GuardarUsuario {
   servicios: Uuid[]
 }
 
+// GET/POST /parametros-salariales (cada cambio agrega una fila; alta solo RR.HH.)
+export interface ValorParametro {
+  id: Uuid
+  parametro: string
+  /** Decimal como string (ej. "3600", "0.25"). */
+  valor: string
+  vigente_desde: FechaIso
+  registrado: Timestamp
+}
+
+export interface Parametros {
+  /** Fecha (zona del negocio) usada para calcular los vigentes. */
+  fecha: FechaIso
+  vigentes: ValorParametro[]
+  historial: ValorParametro[]
+}
+
+export interface NuevoValorParametro {
+  parametro: string
+  valor: string
+  vigente_desde: FechaIso
+}
+
 // GET /aprobaciones · PATCH /aprobaciones/{id} · GET /aprobaciones/{id}/historial
 export interface Aprobacion {
   id: Uuid
