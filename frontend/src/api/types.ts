@@ -28,6 +28,10 @@ export interface Me {
   nombre: string | null
   rol: Rol | string | null
   activo: boolean | null
+  cargo: string | null
+  division: string | null
+  region: string | null
+  inmediato_superior: string | null
 }
 
 // GET /matriz-servicio — orden: Centro de Costo → Cliente → Servicio → Cargo

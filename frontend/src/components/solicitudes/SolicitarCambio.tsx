@@ -20,6 +20,7 @@ export function SolicitarCambio({
   onCerrar,
   soloBoton,
   onEnviada,
+  campoFijo,
 }: {
   servicioId: string
   cargos: { id: string; nombre: string }[]
@@ -30,6 +31,11 @@ export function SolicitarCambio({
   soloBoton?: boolean
   /** Se llama al crear la solicitud (útil en modo controlado). */
   onEnviada?: () => void
+  /**
+   * Dato a cambiar ya decidido (ej. desde un dato del servicio). Oculta el selector de campo y,
+   * si el campo pide cargo y viene `cargoInicial`, también el de cargo. Formulario en una columna.
+   */
+  campoFijo?: string
 }) {
   const crear = useCrearSolicitud()
   const [abiertoInterno, setAbiertoInterno] = useState(false)
@@ -39,7 +45,7 @@ export function SolicitarCambio({
     if (v) onAbrir?.()
     else onCerrar?.()
   }
-  const [campo, setCampo] = useState('')
+  const [campo, setCampo] = useState(campoFijo ?? '')
   const [cargo, setCargo] = useState(cargoInicial ?? '')
   const [motivo, setMotivo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -60,8 +66,8 @@ export function SolicitarCambio({
           setOk(true)
           onEnviada?.()
           setAbierto(false)
-          setCampo('')
-          setCargo('')
+          setCampo(campoFijo ?? '')
+          setCargo(cargoInicial ?? '')
           setMotivo('')
           setDescripcion('')
         },
@@ -95,16 +101,27 @@ export function SolicitarCambio({
 
   const campoClase = 'h-8 rounded-md border border-input bg-white px-2 text-sm'
   return (
-    <form onSubmit={enviar} className="mt-2 grid w-full gap-2 rounded-lg border bg-white p-3 sm:grid-cols-2" aria-label="Solicitar cambio">
-      <select aria-label="Dato a cambiar" className={campoClase} value={campo} onChange={(e) => setCampo(e.target.value)}>
-        <option value="">¿Qué dato hay que cambiar?</option>
-        {Object.entries(CAMPOS_SOLICITUD).map(([v, t]) => (
-          <option key={v} value={v}>
-            {t}
-          </option>
-        ))}
-      </select>
-      {pideCargo ? (
+    <form
+      onSubmit={enviar}
+      className={campoFijo ? 'mt-2 grid w-full gap-2 rounded-lg border bg-white p-3 [&>*]:col-span-1' : 'mt-2 grid w-full gap-2 rounded-lg border bg-white p-3 sm:grid-cols-2'}
+      aria-label="Solicitar cambio"
+    >
+      {campoFijo ? (
+        <p className="text-xs text-nova-gris">
+          Cambio en <span className="font-medium text-nova-titulo">{CAMPOS_SOLICITUD[campoFijo] ?? campoFijo}</span>
+          {pideCargo && cargoInicial && <> · {cargos.find((c) => c.id === cargoInicial)?.nombre}</>}
+        </p>
+      ) : (
+        <select aria-label="Dato a cambiar" className={campoClase} value={campo} onChange={(e) => setCampo(e.target.value)}>
+          <option value="">¿Qué dato hay que cambiar?</option>
+          {Object.entries(CAMPOS_SOLICITUD).map(([v, t]) => (
+            <option key={v} value={v}>
+              {t}
+            </option>
+          ))}
+        </select>
+      )}
+      {campoFijo && (!pideCargo || cargoInicial) ? null : pideCargo ? (
         <select aria-label="Cargo" className={campoClase} value={cargo} onChange={(e) => setCargo(e.target.value)}>
           <option value="">Cargo…</option>
           {cargos.map((c) => (
