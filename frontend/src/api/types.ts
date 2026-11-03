@@ -116,6 +116,52 @@ export interface Requerimiento {
   creado: Timestamp
 }
 
+// GET /requerimientos/opciones · POST /requerimientos
+export type TipoRequerimiento = 'nuevo' | 'modificacion' | 'promocion' | 'cambio'
+/** `cargos.tipo` en la base. */
+export type TipoCargo = 'operativo' | 'administrativo_staff'
+
+export interface CargoOpcion {
+  id: Uuid
+  nombre: string
+  tipo: TipoCargo | string | null
+}
+
+export interface ServicioOpcion {
+  id: Uuid
+  nombre: string
+  tiempo_capacitacion_dias: number | null
+  cargos: CargoOpcion[]
+}
+
+export interface OpcionesRequerimiento {
+  servicios: ServicioOpcion[]
+  /** Cargos administrativo_staff: se pueden pedir sin servicio. */
+  cargos_staff: CargoOpcion[]
+  tipos: TipoRequerimiento[]
+  motivos: string[]
+}
+
+export interface BonoExtra {
+  nombre: string
+  /** Decimal como string, hasta 2 decimales. */
+  monto: Monto
+  motivo: string
+}
+
+export interface CrearRequerimiento {
+  tipo: TipoRequerimiento
+  servicio_id: Uuid | null
+  cargo_id: Uuid
+  cantidad: number
+  motivo: string
+  fecha_inicio_capacitacion: FechaIso
+  fecha_inicio_operacion: FechaIso
+  fecha_fin: FechaIso | null
+  comentarios: string | null
+  bonos_extra: BonoExtra[]
+}
+
 // GET /aprobaciones · PATCH /aprobaciones/{id} · GET /aprobaciones/{id}/historial
 export interface Aprobacion {
   id: Uuid

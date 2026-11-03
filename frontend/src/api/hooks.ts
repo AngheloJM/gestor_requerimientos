@@ -12,7 +12,9 @@ import type {
   EntradaHistorial,
   FilaMatriz,
   FiltrosMatriz,
+  CrearRequerimiento,
   Me,
+  OpcionesRequerimiento,
   Requerimiento,
   Tablero,
 } from '@/api/types'
@@ -61,6 +63,27 @@ export function useRequerimientos(mios: boolean) {
     queryFn: ({ signal }) =>
       api.get<Requerimiento[]>('/requerimientos', mios ? { mios: 'true' } : undefined, signal),
     placeholderData: keepPreviousData,
+  })
+}
+
+export function useOpcionesRequerimiento() {
+  return useQuery({
+    queryKey: ['requerimientos', 'opciones'] as const,
+    queryFn: ({ signal }) =>
+      api.get<OpcionesRequerimiento>('/requerimientos/opciones', undefined, signal),
+    staleTime: 60_000,
+  })
+}
+
+/** Crea el requerimiento (la base valida todo) y devuelve su folio. */
+export function useCrearRequerimiento() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CrearRequerimiento) => api.post<{ folio: string }>('/requerimientos', body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.requerimientosTodos })
+      void qc.invalidateQueries({ queryKey: queryKeys.almanaqueTodos })
+    },
   })
 }
 

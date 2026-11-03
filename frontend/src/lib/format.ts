@@ -19,3 +19,9 @@ export function formatFecha(f: FechaIso | null | undefined): string {
   const [y, m, d] = f.split('-')
   return `${d}/${m}/${y}`
 }
+
+/** "2026-12-15" − 10 días → "2026-12-05", en calendario puro (UTC, sin zona horaria). */
+export function restarDias(f: FechaIso, dias: number): FechaIso {
+  const [y, m, d] = f.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d - dias)).toISOString().slice(0, 10)
+}
