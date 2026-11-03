@@ -1,12 +1,8 @@
-import { ClipboardList } from 'lucide-react'
-
 import {
-  type BonoCatalogoCfg,
   type CargoCfg,
   type CentroCostoCfg,
   type ClienteCfg,
   type ContratoCfg,
-  type MetricaCatalogoCfg,
   type ProyectoCfg,
   type ServicioCfg,
   useCatalogosServicio,
@@ -348,78 +344,5 @@ export function Contratos({ esRrhh }: Permisos) {
         duracion_unidad: textoONulo(v, 'duracion_unidad'),
       })}
     />
-  )
-}
-
-// --- 8. Catálogo de métricas -------------------------------------------------------------
-
-export function CatalogoMetricas({ esRrhh }: Permisos) {
-  const q = useConfigLista<MetricaCatalogoCfg>('catalogo-metricas')
-  return (
-    <CrudSeccion<MetricaCatalogoCfg>
-      titulo="Catálogo de métricas"
-      recurso="catalogo-metricas"
-      filas={q.data}
-      cargando={q.isPending}
-      error={q.error}
-      // TODO(negocio): producción solo permite alta (no hay políticas UPDATE/DELETE).
-      permisos={{ crear: esRrhh, editar: false, eliminar: false }}
-      nota="Editar y eliminar métricas del catálogo no está habilitado: la base de producción solo permite el alta en esta tabla (pendiente)."
-      idDe={(m) => m.id}
-      nombreDe={(m) => m.nombre}
-      columnas={[
-        { titulo: 'Métrica', valor: (m) => <span className="font-medium text-nova-titulo">{m.nombre}</span> },
-        { titulo: 'Concepto', valor: (m) => vacio(m.concepto) },
-        { titulo: 'Fórmula', valor: (m) => vacio(m.formula) },
-      ]}
-      campos={[
-        { nombre: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true },
-        { nombre: 'concepto', etiqueta: 'Concepto', tipo: 'textarea' },
-        { nombre: 'formula', etiqueta: 'Fórmula', tipo: 'textarea' },
-      ]}
-      inicial={(m) => ({ nombre: m?.nombre ?? '', concepto: m?.concepto ?? '', formula: m?.formula ?? '' })}
-      aBody={(v) => ({ nombre: texto(v, 'nombre'), concepto: textoONulo(v, 'concepto'), formula: textoONulo(v, 'formula') })}
-    />
-  )
-}
-
-// --- 9. Catálogo de bonos ----------------------------------------------------------------
-
-export function CatalogoBonos({ esRrhh }: Permisos) {
-  const q = useConfigLista<BonoCatalogoCfg>('catalogo-bonos')
-  return (
-    <CrudSeccion<BonoCatalogoCfg>
-      titulo="Catálogo de bonos"
-      recurso="catalogo-bonos"
-      filas={q.data}
-      cargando={q.isPending}
-      error={q.error}
-      // TODO(negocio): sin política DELETE en producción.
-      permisos={{ crear: esRrhh, editar: esRrhh, eliminar: false }}
-      nota="Catálogo simple de nombres. Todavía no está conectado a nada (los bonos de cada cargo salen del catálogo de métricas). Eliminar no está habilitado en la base (pendiente)."
-      idDe={(b) => b.id}
-      nombreDe={(b) => b.nombre}
-      columnas={[{ titulo: 'Bono', valor: (b) => <span className="font-medium text-nova-titulo">{b.nombre}</span> }]}
-      campos={[{ nombre: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true }]}
-      inicial={(b) => ({ nombre: b?.nombre ?? '' })}
-      aBody={(v) => ({ nombre: texto(v, 'nombre') })}
-    />
-  )
-}
-
-// --- 10. Pendientes de completar -----------------------------------------------------------
-
-export function PendientesCompletar() {
-  return (
-    <div className="grid place-items-center rounded-xl border border-dashed bg-card px-6 py-14 text-center">
-      <span className="grid size-12 place-items-center rounded-xl bg-nova-naranja-claro text-nova-naranja">
-        <ClipboardList className="size-6" aria-hidden />
-      </span>
-      <p className="mt-4 font-medium text-nova-titulo">Criterio pendiente de definir</p>
-      <p className="mt-1 max-w-md text-sm text-nova-gris">
-        Este listado mostrará los servicios con configuración incompleta. Qué cuenta como “incompleto” (falta algún cargo,
-        alguna métrica, etc.) todavía no lo definió la clienta.
-      </p>
-    </div>
   )
 }

@@ -181,40 +181,42 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
                       )}
                     </td>
                     <td className="border-b px-3 py-2 text-right font-semibold whitespace-nowrap tabular-nums text-nova-azul">{bs(f.total_ganado)}</td>
-                    <td className="border-b px-3 py-2 text-right whitespace-nowrap">
-                      {enviada === f.servicio_cargo_id && (
-                        <span className="mr-2 text-xs text-exito" role="status">
-                          Solicitud enviada
-                        </span>
-                      )}
-                      {esRrhh && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-expanded={abierto?.id === f.servicio_cargo_id && abierto.modo === 'editar'}
-                            onClick={() => alternar(f.servicio_cargo_id, 'editar')}
-                          >
-                            <Pencil aria-hidden /> Editar
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-expanded={abierto?.id === f.servicio_cargo_id && abierto.modo === 'metricas'}
-                            onClick={() => alternar(f.servicio_cargo_id, 'metricas')}
-                          >
-                            <SlidersHorizontal aria-hidden /> Métricas
-                          </Button>
-                        </>
-                      )}
-                      <SolicitarCambio
-                        servicioId={f.servicio.id}
-                        cargos={cargosDe(f.servicio.id)}
-                        abierto={solicitando === f.servicio_cargo_id}
-                        onAbrir={() => setSolicitando(f.servicio_cargo_id)}
-                        onCerrar={() => setSolicitando(null)}
-                        soloBoton
-                      />
+                    <td className="border-b px-3 py-1.5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1 [&>span]:ml-0">
+                        {enviada === f.servicio_cargo_id && (
+                          <span className="mr-2 text-xs text-exito" role="status">
+                            Solicitud enviada
+                          </span>
+                        )}
+                        {esRrhh && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-expanded={abierto?.id === f.servicio_cargo_id && abierto.modo === 'editar'}
+                              onClick={() => alternar(f.servicio_cargo_id, 'editar')}
+                            >
+                              <Pencil aria-hidden /> Editar
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-expanded={abierto?.id === f.servicio_cargo_id && abierto.modo === 'metricas'}
+                              onClick={() => alternar(f.servicio_cargo_id, 'metricas')}
+                            >
+                              <SlidersHorizontal aria-hidden /> Métricas
+                            </Button>
+                          </>
+                        )}
+                        <SolicitarCambio
+                          servicioId={f.servicio.id}
+                          cargos={cargosDe(f.servicio.id)}
+                          abierto={solicitando === f.servicio_cargo_id}
+                          onAbrir={() => setSolicitando(f.servicio_cargo_id)}
+                          onCerrar={() => setSolicitando(null)}
+                          soloBoton
+                        />
+                      </div>
                     </td>
                   </tr>
                   {solicitando === f.servicio_cargo_id && (
