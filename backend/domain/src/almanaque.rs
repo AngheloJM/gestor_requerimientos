@@ -1,18 +1,17 @@
 //! Almanaque: calendario mensual de movimientos, con las cuatro categorías de la leyenda del
-//! producto (Entradas / Salidas / Entregas / Rectificaciones):
+//! producto (Entradas / Salidas / Entregas / Rectificaciones). Fuente: la función de producción
+//! `leer_eventos_almanaque` (la misma que usa la aplicación original):
 //!
-//! - **Entrada**: `requerimientos.fecha_inicio_operacion` (cantidad = `cantidad_personas`).
-//! - **Salida**: `requerimientos.fecha_salida` (cantidad = `cantidad_personas`).
-//! - **Entrega**: `requerimiento_entregas` sin `corrige_entrega_id` (cantidad = `cantidad`).
-//! - **Rectificación**: `requerimiento_entregas` con `corrige_entrega_id` (corrige otra entrega).
+//! - **Entrada** (`in`): `requerimientos.fecha_inicio_operacion` (cantidad = `cantidad_personas`).
+//! - **Salida** (`out`): `requerimientos.fecha_salida` (cantidad = `cantidad_personas`).
+//! - **Entrega / Rectificación**: `requerimiento_entregas.tipo`, con el estado de su decisión.
+//! - No se filtra por `requerimientos.estado` (igual que la función de la base).
 //!
-//! Por día y categoría se agrupa por servicio+cargo sumando cantidades.
+//! Por día y categoría se agrupa por servicio + cargo + cliente (+ estado de entrega).
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use chrono::{Datelike, NaiveDate};
-
-use crate::{CargoId, ServicioId};
 
 /// Mes calendario válido. Rango de años acotado para rechazar valores absurdos.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,7 +90,7 @@ impl Periodo {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TipoMovimiento {
     Entrada,
     Salida,
@@ -100,10 +99,12 @@ pub enum TipoMovimiento {
 }
 
 impl TipoMovimiento {
+    /// Códigos de `leer_eventos_almanaque` (producción): `in` / `out` para requerimientos y
+    /// `requerimiento_entregas.tipo` (`entrega` / `rectificacion`) para entregas.
     pub fn desde_codigo(s: &str) -> Option<Self> {
         match s {
-            "entrada" => Some(Self::Entrada),
-            "salida" => Some(Self::Salida),
+            "in" => Some(Self::Entrada),
+            "out" => Some(Self::Salida),
             "entrega" => Some(Self::Entrega),
             "rectificacion" => Some(Self::Rectificacion),
             _ => None,
@@ -111,32 +112,36 @@ impl TipoMovimiento {
     }
 }
 
-/// Un evento ya clasificado.
+/// Un evento tal como lo devuelve la función de la base (nombres, no ids).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Movimiento {
     pub tipo: TipoMovimiento,
     pub fecha: NaiveDate,
-    /// `None` si el requerimiento no tiene servicio (`requerimientos.servicio_id` es nullable).
-    pub servicio_id: Option<ServicioId>,
-    pub servicio_nombre: Option<String>,
-    pub cargo_id: CargoId,
-    pub cargo_nombre: Option<String>,
-    /// `None` si la cantidad es NULL en la base (`cantidad_personas` es nullable).
-    pub cantidad: Option<u32>,
+    pub cliente: Option<String>,
+    pub servicio: Option<String>,
+    pub cargo: Option<String>,
+    /// `None` si la cantidad es NULL (`requerimientos.cantidad_personas` es nullable).
+    /// Las rectificaciones pueden ser negativas (CHECK de la base: `cantidad <> 0`).
+    pub cantidad: Option<i64>,
+    pub folio: Option<String>,
+    /// Solo entregas/rectificaciones: `pendiente` (sin decisión), `aceptada` o `rechazada`.
+    pub estado_entrega: Option<String>,
 }
 
-/// Total de un servicio+cargo en un día y categoría.
+/// Total de un cliente+servicio+cargo (y estado de entrega) en un día y categoría.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineaAlmanaque {
-    pub servicio_id: Option<ServicioId>,
-    pub servicio_nombre: Option<String>,
-    pub cargo_id: CargoId,
-    pub cargo_nombre: Option<String>,
+    pub cliente: Option<String>,
+    pub servicio: Option<String>,
+    pub cargo: Option<String>,
+    pub estado_entrega: Option<String>,
     /// Suma de las cantidades no nulas.
-    pub cantidad: u64,
+    pub cantidad: i64,
     /// Registros agrupados con cantidad NULL (no se suman: no se asume un valor).
     /// TODO(negocio): ¿un requerimiento sin `cantidad_personas` cuenta como 1 persona?
     pub registros_sin_cantidad: u32,
+    /// Folios de los requerimientos agrupados (para el detalle del día).
+    pub folios: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -145,8 +150,9 @@ pub struct DiaAlmanaque {
     pub entradas: Vec<LineaAlmanaque>,
     pub salidas: Vec<LineaAlmanaque>,
     pub entregas: Vec<LineaAlmanaque>,
-    /// TODO(negocio): si la cantidad de una rectificación reemplaza a la de la entrega que
-    /// corrige o es un delta. Hoy se listan por separado, sin netear contra la original.
+    /// Se listan aparte, con su signo, sin netear contra la entrega que corrigen.
+    /// TODO(negocio): confirmar que la cantidad es un ajuste (el CHECK `cantidad <> 0`, que
+    /// admite negativos, sugiere que sí).
     pub rectificaciones: Vec<LineaAlmanaque>,
 }
 
@@ -157,48 +163,54 @@ pub struct Almanaque {
     pub dias: Vec<DiaAlmanaque>,
 }
 
-type Clave = (NaiveDate, TipoMovimiento, Option<ServicioId>, CargoId);
+type Clave = (
+    NaiveDate,
+    TipoMovimiento,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+);
 
 impl Almanaque {
     /// Agrupa los movimientos del mes. Los que caen fuera del periodo se ignoran.
     pub fn construir(periodo: Periodo, movimientos: &[Movimiento]) -> Self {
-        let mut grupos: HashMap<Clave, LineaAlmanaque> = HashMap::new();
+        let mut grupos: BTreeMap<Clave, LineaAlmanaque> = BTreeMap::new();
         for m in movimientos.iter().filter(|m| periodo.contiene(m.fecha)) {
-            let linea = grupos
-                .entry((m.fecha, m.tipo, m.servicio_id, m.cargo_id))
-                .or_insert_with(|| LineaAlmanaque {
-                    servicio_id: m.servicio_id,
-                    servicio_nombre: m.servicio_nombre.clone(),
-                    cargo_id: m.cargo_id,
-                    cargo_nombre: m.cargo_nombre.clone(),
-                    cantidad: 0,
-                    registros_sin_cantidad: 0,
-                });
+            let clave = (
+                m.fecha,
+                m.tipo,
+                m.servicio.clone(),
+                m.cargo.clone(),
+                m.cliente.clone(),
+                m.estado_entrega.clone(),
+            );
+            let linea = grupos.entry(clave).or_insert_with(|| LineaAlmanaque {
+                cliente: m.cliente.clone(),
+                servicio: m.servicio.clone(),
+                cargo: m.cargo.clone(),
+                estado_entrega: m.estado_entrega.clone(),
+                cantidad: 0,
+                registros_sin_cantidad: 0,
+                folios: Vec::new(),
+            });
             match m.cantidad {
-                Some(n) => linea.cantidad += u64::from(n),
+                Some(n) => linea.cantidad += n,
                 None => linea.registros_sin_cantidad += 1,
+            }
+            if let Some(f) = &m.folio
+                && !linea.folios.contains(f)
+            {
+                linea.folios.push(f.clone());
             }
         }
 
-        let mut por_dia: HashMap<(NaiveDate, TipoMovimiento), Vec<LineaAlmanaque>> = HashMap::new();
-        for ((fecha, tipo, _, _), linea) in grupos {
+        // BTreeMap: ya quedan ordenadas por fecha, tipo, servicio, cargo, cliente, estado.
+        let mut por_dia: BTreeMap<(NaiveDate, TipoMovimiento), Vec<LineaAlmanaque>> =
+            BTreeMap::new();
+        for ((fecha, tipo, ..), mut linea) in grupos {
+            linea.folios.sort();
             por_dia.entry((fecha, tipo)).or_default().push(linea);
-        }
-        for v in por_dia.values_mut() {
-            v.sort_by(|a, b| {
-                (
-                    &a.servicio_nombre,
-                    &a.cargo_nombre,
-                    a.servicio_id,
-                    a.cargo_id,
-                )
-                    .cmp(&(
-                        &b.servicio_nombre,
-                        &b.cargo_nombre,
-                        b.servicio_id,
-                        b.cargo_id,
-                    ))
-            });
         }
 
         let mut tomar = |fecha, tipo| por_dia.remove(&(fecha, tipo)).unwrap_or_default();
@@ -229,20 +241,22 @@ mod tests {
         Periodo::new(2026, 11).unwrap()
     }
 
-    struct Puesto {
-        s: ServicioId,
-        c: CargoId,
-    }
-
-    fn mov(p: &Puesto, tipo: TipoMovimiento, fecha: NaiveDate, cant: Option<u32>) -> Movimiento {
+    fn mov(
+        tipo: TipoMovimiento,
+        fecha: NaiveDate,
+        servicio: &str,
+        cant: Option<i64>,
+        folio: &str,
+    ) -> Movimiento {
         Movimiento {
             tipo,
             fecha,
-            servicio_id: Some(p.s),
-            servicio_nombre: Some("Call center".into()),
-            cargo_id: p.c,
-            cargo_nombre: Some("Operador".into()),
+            cliente: Some("Cliente A".into()),
+            servicio: Some(servicio.into()),
+            cargo: Some("Operador".into()),
             cantidad: cant,
+            folio: Some(folio.into()),
+            estado_entrega: None,
         }
     }
 
@@ -256,57 +270,55 @@ mod tests {
     }
 
     #[test]
-    fn cuatro_categorias_separadas_y_suma_por_servicio_cargo_dia() {
+    fn suma_por_dia_tipo_servicio_y_cargo_con_folios() {
         use TipoMovimiento::*;
-        let p = Puesto {
-            s: ServicioId::new(),
-            c: CargoId::new(),
-        };
-        let a = Almanaque::construir(
-            nov(),
-            &[
-                mov(&p, Entrada, d(3), Some(3)),
-                mov(&p, Entrada, d(3), Some(2)),
-                mov(&p, Salida, d(3), Some(1)),
-                mov(&p, Entrega, d(3), Some(4)),
-                mov(&p, Rectificacion, d(3), Some(1)),
-                mov(&p, Entrada, d(4), Some(7)),
-            ],
-        );
+        let movs = vec![
+            mov(Entrada, d(3), "Call center", Some(3), "REQ-000002"),
+            mov(Entrada, d(3), "Call center", Some(4), "REQ-000001"),
+            mov(Entrada, d(3), "Call center", None, "REQ-000003"),
+            mov(Entrada, d(3), "Soporte", Some(1), "REQ-000004"),
+            mov(Salida, d(3), "Call center", Some(2), "REQ-000001"),
+            mov(Rectificacion, d(6), "Call center", Some(-1), "REQ-000001"),
+            mov(
+                Entrada,
+                NaiveDate::from_ymd_opt(2026, 12, 1).unwrap(),
+                "Call center",
+                Some(9),
+                "REQ-000009",
+            ),
+        ];
+        let a = Almanaque::construir(nov(), &movs);
+        assert_eq!(a.dias.len(), 30, "un elemento por día");
         let dia3 = &a.dias[2];
-        assert_eq!(dia3.entradas[0].cantidad, 5);
-        assert_eq!(dia3.salidas[0].cantidad, 1);
-        assert_eq!(dia3.entregas[0].cantidad, 4);
-        assert_eq!(dia3.rectificaciones[0].cantidad, 1);
-        assert_eq!(a.dias[3].entradas[0].cantidad, 7);
-        assert_eq!(a.dias.len(), 30);
-    }
-
-    #[test]
-    fn cantidad_nula_no_se_suma_pero_se_cuenta() {
-        let p = Puesto {
-            s: ServicioId::new(),
-            c: CargoId::new(),
-        };
-        let a = Almanaque::construir(
-            nov(),
-            &[
-                mov(&p, TipoMovimiento::Entrada, d(5), Some(2)),
-                mov(&p, TipoMovimiento::Entrada, d(5), None),
-            ],
+        assert_eq!(dia3.entradas.len(), 2);
+        let cc = &dia3.entradas[0];
+        assert_eq!(cc.servicio.as_deref(), Some("Call center"));
+        assert_eq!((cc.cantidad, cc.registros_sin_cantidad), (7, 1));
+        assert_eq!(cc.folios, ["REQ-000001", "REQ-000002", "REQ-000003"]);
+        assert_eq!(dia3.salidas[0].cantidad, 2);
+        assert_eq!(
+            a.dias[5].rectificaciones[0].cantidad, -1,
+            "rectificación con signo"
         );
-        let l = &a.dias[4].entradas[0];
-        assert_eq!((l.cantidad, l.registros_sin_cantidad), (2, 1));
+        assert!(
+            a.dias.iter().all(|d| d.fecha.month() == 11),
+            "fuera del mes se ignora"
+        );
     }
 
     #[test]
-    fn fuera_del_mes_se_ignora() {
-        let p = Puesto {
-            s: ServicioId::new(),
-            c: CargoId::new(),
-        };
-        let oct = NaiveDate::from_ymd_opt(2026, 10, 31).unwrap();
-        let a = Almanaque::construir(nov(), &[mov(&p, TipoMovimiento::Entrada, oct, Some(9))]);
-        assert!(a.dias.iter().all(|d| d.entradas.is_empty()));
+    fn entregas_separadas_por_estado() {
+        use TipoMovimiento::*;
+        let mut aceptada = mov(Entrega, d(5), "Call center", Some(3), "REQ-000001");
+        aceptada.estado_entrega = Some("aceptada".into());
+        let mut pendiente = mov(Entrega, d(5), "Call center", Some(2), "REQ-000002");
+        pendiente.estado_entrega = Some("pendiente".into());
+        let a = Almanaque::construir(nov(), &[pendiente, aceptada]);
+        let estados: Vec<_> = a.dias[4]
+            .entregas
+            .iter()
+            .map(|l| (l.estado_entrega.as_deref(), l.cantidad))
+            .collect();
+        assert_eq!(estados, [(Some("aceptada"), 3), (Some("pendiente"), 2)]);
     }
 }

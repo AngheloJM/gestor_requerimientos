@@ -1,4 +1,5 @@
 //! GET /almanaque?mes=&anio= — Entradas / Salidas / Entregas / Rectificaciones por día.
+//! Fuente: `leer_eventos_almanaque` (producción) + filtro de servicios activos.
 
 use axum::{
     Json,
@@ -10,7 +11,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     auth::AuthUser,
-    dto::RefDto,
     error::{ApiError, ApiResult, tx_usuario},
 };
 
@@ -39,21 +39,29 @@ pub struct DiaDto {
 
 #[derive(Debug, Serialize)]
 pub struct LineaDto {
+    pub cliente: Option<String>,
     /// `null` si el requerimiento no tiene servicio.
-    pub servicio: Option<RefDto>,
-    pub cargo: RefDto,
-    pub cantidad: u64,
+    pub servicio: Option<String>,
+    pub cargo: Option<String>,
+    /// Solo entregas/rectificaciones: pendiente | aceptada | rechazada.
+    pub estado_entrega: Option<String>,
+    /// Suma (las rectificaciones pueden ser negativas).
+    pub cantidad: i64,
     /// Registros con cantidad NULL (no sumados).
     pub registros_sin_cantidad: u32,
+    pub folios: Vec<String>,
 }
 
 impl From<LineaAlmanaque> for LineaDto {
     fn from(l: LineaAlmanaque) -> Self {
         Self {
-            servicio: l.servicio_id.map(|id| RefDto::new(id, l.servicio_nombre)),
-            cargo: RefDto::new(l.cargo_id, l.cargo_nombre),
+            cliente: l.cliente,
+            servicio: l.servicio,
+            cargo: l.cargo,
+            estado_entrega: l.estado_entrega,
             cantidad: l.cantidad,
             registros_sin_cantidad: l.registros_sin_cantidad,
+            folios: l.folios,
         }
     }
 }
