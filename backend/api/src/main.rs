@@ -14,6 +14,7 @@ mod requerimientos;
 mod roles;
 mod seguridad;
 mod sesion;
+mod solicitudes;
 mod state;
 mod tablero;
 mod usuarios;
@@ -119,6 +120,8 @@ fn protected_routes(state: AppState) -> Router<AppState> {
             "/parametros-salariales",
             get(parametros::listar).post(parametros::registrar),
         )
+        .route("/solicitudes-cambio", post(solicitudes::crear))
+        .route("/solicitudes-cambio/{id}/cierre", post(solicitudes::cerrar))
         .route("/usuarios", get(usuarios::listar))
         .route("/usuarios/opciones", get(usuarios::opciones))
         .route("/usuarios/{id}", put(usuarios::actualizar))
