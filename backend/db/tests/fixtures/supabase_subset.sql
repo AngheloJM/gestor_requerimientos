@@ -93,7 +93,7 @@ CREATE TABLE usuarios (
     division text,
     region text,
     inmediato_superior_id uuid REFERENCES usuarios(id),
-    rol text NOT NULL,
+    rol text NOT NULL CHECK (rol = ANY (ARRAY['externo'::text, 'estandar'::text, 'encargado_costos'::text, 'rrhh_admin'::text])),
     activo boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     es_reclutador_staff_default boolean NOT NULL DEFAULT false
