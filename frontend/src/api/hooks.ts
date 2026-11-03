@@ -53,11 +53,12 @@ export function useMe() {
   })
 }
 
-export function useMatrizServicio(filtros: FiltrosMatriz = {}) {
+export function useMatrizServicio(filtros: FiltrosMatriz = {}, opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.matriz(filtros),
     queryFn: ({ signal }) => api.get<FilaMatriz[]>('/matriz-servicio', { ...filtros }, signal),
     placeholderData: keepPreviousData, // evita parpadeo al cambiar filtros
+    enabled: opts.enabled ?? true,
   })
 }
 
