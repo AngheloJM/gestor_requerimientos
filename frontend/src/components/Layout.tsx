@@ -6,6 +6,7 @@ import {
   LogOut,
   Menu,
   ShieldCheck,
+  SlidersHorizontal,
   Users,
   Table2,
   X,
@@ -24,6 +25,7 @@ const LINKS = [
   { to: '/tablero', label: 'Tablero', icono: LayoutDashboard },
   { to: '/matriz', label: 'Matriz de servicio', icono: Table2 },
   { to: '/almanaque', label: 'Almanaque', icono: CalendarDays },
+  { to: '/parametros', label: 'Parámetros salariales', icono: SlidersHorizontal },
   // Solo se oculta en el menú; la autorización real la aplica RLS en la base.
   { to: '/aprobaciones', label: 'Aprobaciones', icono: ClipboardCheck, soloRol: 'rrhh_admin' },
   { to: '/usuarios', label: 'Usuarios', icono: Users, soloRol: 'rrhh_admin' },
