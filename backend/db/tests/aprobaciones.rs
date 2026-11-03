@@ -3,7 +3,7 @@ mod comun;
 use chrono::NaiveDate;
 use comun::*;
 use db::aprobaciones::{
-    ActualizarError, EdicionFechaFin, actualizar_fecha_fin, historial, listar, obtener,
+    ActualizarError, EdicionRequerimiento, actualizar, historial, listar, obtener,
 };
 use domain::{DomainError, RequerimientoId, UsuarioId};
 use sqlx::PgConnection;
@@ -47,14 +47,15 @@ async fn edicion<'a>(
     id: RequerimientoId,
     nueva: Option<NaiveDate>,
     glosa: &'a str,
-) -> EdicionFechaFin<'a> {
+) -> EdicionRequerimiento<'a> {
     let version = obtener(conn, id)
         .await
         .unwrap()
         .map(|a| a.version)
         .unwrap_or_default();
-    EdicionFechaFin {
-        nueva,
+    EdicionRequerimiento {
+        fecha_fin: Some(nueva),
+        estado: None,
         version,
         glosa,
         categoria_desvio: None,
@@ -73,7 +74,7 @@ async fn edicion<'a>(
 async fn editar_registra_historial_una_sola_vez_via_trigger(pool: db::PgPool) {
     let mut tx = como(&pool, RRHH).await;
     let e = edicion(&mut tx, req81(), Some(d(12, 31)), "extensión del servicio").await;
-    let a = actualizar_fecha_fin(&mut tx, req81(), e).await.unwrap();
+    let a = actualizar(&mut tx, req81(), e).await.unwrap();
     assert_eq!(a.fecha_fin, Some(d(12, 31)));
     assert_ne!(a.version, e.version, "updated_at avanza");
     tx.commit().await.unwrap();
@@ -113,7 +114,7 @@ async fn editar_registra_historial_una_sola_vez_via_trigger(pool: db::PgPool) {
 async fn mismo_valor_no_escribe_historial(pool: db::PgPool) {
     let mut tx = como(&pool, RRHH).await;
     let e = edicion(&mut tx, req81(), Some(d(11, 20)), "sin cambios").await;
-    actualizar_fecha_fin(&mut tx, req81(), e).await.unwrap();
+    actualizar(&mut tx, req81(), e).await.unwrap();
     assert_eq!(historial(&mut tx, req81()).await.unwrap().unwrap().len(), 2);
 }
 
@@ -127,7 +128,7 @@ async fn reglas_de_la_base(pool: db::PgPool) {
     let mut tx = como(&pool, RRHH).await;
     let e = edicion(&mut tx, req81(), Some(d(12, 31)), "  ok ").await;
     assert!(matches!(
-        actualizar_fecha_fin(&mut tx, req81(), e).await,
+        actualizar(&mut tx, req81(), e).await,
         Err(ActualizarError::Regla(m)) if m.starts_with("Glosa obligatoria")
     ));
     drop(tx);
@@ -137,7 +138,7 @@ async fn reglas_de_la_base(pool: db::PgPool) {
     let mut e = edicion(&mut tx, req81(), Some(d(12, 31)), "extensión").await;
     e.version -= chrono::Duration::seconds(1);
     assert!(matches!(
-        actualizar_fecha_fin(&mut tx, req81(), e).await,
+        actualizar(&mut tx, req81(), e).await,
         Err(ActualizarError::Conflicto)
     ));
     drop(tx);
@@ -148,7 +149,7 @@ async fn reglas_de_la_base(pool: db::PgPool) {
     e.categoria_desvio = Some("otra");
     e.detalle_desvio = Some("detalle");
     assert!(matches!(
-        actualizar_fecha_fin(&mut tx, req81(), e).await,
+        actualizar(&mut tx, req81(), e).await,
         Err(ActualizarError::Regla(m)) if m == "Categoría de desvío inválida"
     ));
 }
@@ -162,7 +163,7 @@ async fn validacion_y_permisos(pool: db::PgPool) {
     let mut tx = como(&pool, RRHH).await;
     let e = edicion(&mut tx, req81(), Some(d(10, 1)), "antes del inicio").await;
     assert!(matches!(
-        actualizar_fecha_fin(&mut tx, req81(), e).await,
+        actualizar(&mut tx, req81(), e).await,
         Err(ActualizarError::Validacion(
             DomainError::RangoFechasInvalido
         ))
@@ -173,7 +174,7 @@ async fn validacion_y_permisos(pool: db::PgPool) {
     let mut tx = como(&pool, COSTOS).await;
     let e = edicion(&mut tx, req81(), None, "quitar fecha").await;
     assert!(matches!(
-        actualizar_fecha_fin(&mut tx, req81(), e).await,
+        actualizar(&mut tx, req81(), e).await,
         Err(ActualizarError::SinPermiso)
     ));
     drop(tx);
@@ -182,7 +183,7 @@ async fn validacion_y_permisos(pool: db::PgPool) {
     let mut tx = como(&pool, SIN_SERVICIOS).await;
     let e = edicion(&mut tx, req81(), None, "quitar fecha").await;
     assert!(matches!(
-        actualizar_fecha_fin(&mut tx, req81(), e).await,
+        actualizar(&mut tx, req81(), e).await,
         Err(ActualizarError::NoEncontrado)
     ));
     assert!(historial(&mut tx, req81()).await.unwrap().is_none());
@@ -198,6 +199,57 @@ async fn estandar_con_servicio_asignado_edita_fecha_fin(pool: db::PgPool) {
     let req84 = RequerimientoId(uid(REQ_84));
     let mut tx = como(&pool, ESTANDAR).await;
     let e = edicion(&mut tx, req84, Some(d(12, 1)), "cierre del servicio").await;
-    let a = actualizar_fecha_fin(&mut tx, req84, e).await.unwrap();
+    let a = actualizar(&mut tx, req84, e).await.unwrap();
     assert_eq!(a.fecha_fin, Some(d(12, 1)));
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion")
+)]
+async fn rrhh_aprueba_y_queda_en_historial(pool: db::PgPool) {
+    let mut tx = como(&pool, RRHH).await;
+    let mut e = edicion(&mut tx, req81(), None, "aprobado por comité").await;
+    e.fecha_fin = None;
+    e.estado = Some("aprobado");
+    let a = actualizar(&mut tx, req81(), e).await.unwrap();
+    assert_eq!(a.estado.as_deref(), Some("aprobado"));
+    let h = historial(&mut tx, req81()).await.unwrap().unwrap();
+    let ultimo = h.last().unwrap();
+    assert_eq!(
+        (
+            ultimo.campo.as_str(),
+            ultimo.valor_nuevo.as_deref(),
+            ultimo.glosa.as_deref()
+        ),
+        ("estado", Some("aprobado"), Some("aprobado por comité"))
+    );
+
+    // Mismo estado otra vez: no escribe nada.
+    let mut e = edicion(&mut tx, req81(), None, "repetido").await;
+    e.fecha_fin = None;
+    e.estado = Some("aprobado");
+    actualizar(&mut tx, req81(), e).await.unwrap();
+    assert_eq!(
+        historial(&mut tx, req81()).await.unwrap().unwrap().len(),
+        h.len()
+    );
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion")
+)]
+async fn solo_rrhh_cambia_el_estado(pool: db::PgPool) {
+    let req84 = RequerimientoId(uid(REQ_84));
+    let mut tx = como(&pool, ESTANDAR).await;
+    let mut e = edicion(&mut tx, req84, None, "autoaprobado").await;
+    e.fecha_fin = None;
+    e.estado = Some("aprobado");
+    assert!(matches!(
+        actualizar(&mut tx, req84, e).await,
+        Err(ActualizarError::Regla(m)) if m == "Campo exclusivo de RR.HH."
+    ));
 }
