@@ -10,6 +10,7 @@ mod matriz;
 mod me;
 mod passwords;
 mod requerimientos;
+mod roles;
 mod seguridad;
 mod sesion;
 mod state;
@@ -112,6 +113,14 @@ fn protected_routes(state: AppState) -> Router<AppState> {
             get(requerimientos::listar).post(requerimientos::crear),
         )
         .route("/requerimientos/opciones", get(requerimientos::opciones))
+        .route("/permisos", get(roles::permisos))
+        .route("/roles", get(roles::listar).post(roles::crear))
+        .route(
+            "/roles/{id}",
+            get(roles::obtener)
+                .put(roles::actualizar)
+                .delete(roles::eliminar),
+        )
         .route("/aprobaciones", get(aprobaciones::listar))
         .route("/aprobaciones/{id}", patch(aprobaciones::editar_fecha_fin))
         .route("/aprobaciones/{id}/historial", get(aprobaciones::historial))
