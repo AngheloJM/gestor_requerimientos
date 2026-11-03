@@ -70,6 +70,8 @@ impl From<DbError> for ApiError {
     fn from(e: DbError) -> Self {
         if e.es_permiso_denegado() {
             Self::Forbidden
+        } else if let Some(msg) = e.regla_de_negocio() {
+            Self::Unprocessable(msg.to_owned())
         } else {
             Self::Internal(e.to_string())
         }

@@ -183,9 +183,6 @@ pub async fn historial(
     ))
 }
 
-/// SQLSTATE de `RAISE EXCEPTION` (reglas de negocio de las funciones/triggers de la base).
-const SQLSTATE_RAISE_EXCEPTION: &str = "P0001";
-
 #[derive(Debug)]
 pub enum ActualizarError {
     /// No existe o RLS no permite verlo.
@@ -211,10 +208,7 @@ impl From<DbError> for ActualizarError {
         if e.es_permiso_denegado() {
             return Self::SinPermiso;
         }
-        if let DbError::Sqlx(sqlx::Error::Database(d)) = &e
-            && d.code().as_deref() == Some(SQLSTATE_RAISE_EXCEPTION)
-        {
-            let msg = d.message();
+        if let Some(msg) = e.regla_de_negocio() {
             return if msg.starts_with("Sin acceso") {
                 Self::SinPermiso
             } else if msg.starts_with("El requerimiento cambió") {

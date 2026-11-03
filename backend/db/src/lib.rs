@@ -25,6 +25,11 @@ pub use sqlx::{PgConnection, PgPool};
 /// una operación (ej. "new row violates row-level security policy").
 const SQLSTATE_PERMISO_DENEGADO: &str = "42501";
 
+/// SQLSTATE de `RAISE EXCEPTION` sin código: reglas de negocio de las funciones y triggers de
+/// la base (ej. "Glosa obligatoria…", "Elige un motivo."). Sus mensajes están pensados para
+/// mostrarse al usuario.
+const SQLSTATE_RAISE_EXCEPTION: &str = "P0001";
+
 #[derive(Debug)]
 pub enum DbError {
     Sqlx(sqlx::Error),
@@ -37,6 +42,18 @@ impl DbError {
     pub fn es_permiso_denegado(&self) -> bool {
         matches!(self, Self::Sqlx(sqlx::Error::Database(e))
             if e.code().as_deref() == Some(SQLSTATE_PERMISO_DENEGADO))
+    }
+
+    /// Mensaje de una regla de negocio rechazada por la base (`RAISE EXCEPTION`), si lo es.
+    pub fn regla_de_negocio(&self) -> Option<&str> {
+        match self {
+            Self::Sqlx(sqlx::Error::Database(e))
+                if e.code().as_deref() == Some(SQLSTATE_RAISE_EXCEPTION) =>
+            {
+                Some(e.message())
+            }
+            _ => None,
+        }
     }
 }
 
