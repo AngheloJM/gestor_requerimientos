@@ -91,7 +91,9 @@ function Usuario() {
 export function Layout() {
   const [abierto, setAbierto] = useState(false)
   const { pathname } = useLocation()
-  const titulo = LINKS.find((l) => pathname.startsWith(l.to))?.label ?? ''
+  const titulo =
+    LINKS.find((l) => pathname.startsWith(l.to))?.label ??
+    (pathname.startsWith('/nuevo-requerimiento') ? 'Nuevo requerimiento' : '')
 
   const barra = (
     <div className="flex h-full flex-col gap-6 p-4">

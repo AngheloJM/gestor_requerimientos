@@ -4,6 +4,7 @@ import { RequireAuth } from '@/auth/RequireAuth'
 import { Layout } from '@/components/Layout'
 import { LoginPage } from '@/pages/LoginPage'
 import { MisRequerimientosPage } from '@/pages/MisRequerimientosPage'
+import { NuevoRequerimientoPage } from '@/pages/NuevoRequerimientoPage'
 import { Pendiente } from '@/pages/Pendiente'
 import { TableroPage } from '@/pages/TableroPage'
 
@@ -16,7 +17,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/tablero" element={<TableroPage />} />
             <Route path="/requerimientos" element={<MisRequerimientosPage />} />
-            <Route path="/nuevo-requerimiento" element={<Pendiente titulo="Nuevo requerimiento" hook="(próximo paso)" />} />
+            <Route path="/nuevo-requerimiento" element={<NuevoRequerimientoPage />} />
             <Route path="/matriz" element={<Pendiente titulo="Matriz de servicio" hook="useMatrizServicio" />} />
             <Route path="/almanaque" element={<Pendiente titulo="Almanaque" hook="useAlmanaque" />} />
             <Route path="/aprobaciones" element={<Pendiente titulo="Aprobaciones" hook="useAprobaciones / useEditarFechaFin" />} />
