@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = ["api", "db", "domain"]
+
+# Versiones compartidas: los crates usan `dep = { workspace = true }`.
+[workspace.dependencies]
+domain = { path = "domain" }
+db = { path = "db" }
+
+chrono = { version = "0.4.45", default-features = false, features = ["std"] }
+rust_decimal = "1.43.0"
+rust_decimal_macros = "1.40.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sqlx = { version = "0.9", default-features = false, features = [
+    "postgres", "runtime-tokio", "tls-rustls", "macros", "migrate", "uuid", "rust_decimal", "chrono",
+] }
+tokio = { version = "1.54.1", features = ["full"] }
+tracing = "0.1.44"
+uuid = { version = "1.29.0", features = ["v4"] }
