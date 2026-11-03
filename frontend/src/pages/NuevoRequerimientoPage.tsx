@@ -372,8 +372,13 @@ export function NuevoRequerimientoPage() {
               </Campo>
               <div className="grid content-start gap-1.5">
                 <Label>Tiempo de capacitación (días)</Label>
-                {/* Lo define el servicio (la base no deja cambiarlo al crear). */}
+                {/* Lo define el servicio: la función de la base rechaza enviarlo al crear. */}
                 <p className="flex h-9 items-center rounded-lg bg-nova-hielo/60 px-2.5 text-sm text-nova-titulo">{dias ?? '—'}</p>
+                <p className="text-xs text-nova-gris">
+                  {servicio && !sinServicio && dias == null
+                    ? 'Este servicio no tiene días de capacitación cargados: indicá la fecha de capacitación a mano. Se cargan en Matriz de servicio → Servicios.'
+                    : 'Lo define el servicio (Matriz de servicio → Servicios).'}
+                </p>
               </div>
               <Campo id="fecha_fin" etiqueta="Fecha de fin (opcional)" error={errors.fecha_fin?.message}>
                 <Input id="fecha_fin" type="date" className="h-9 bg-white" {...register('fecha_fin')} />

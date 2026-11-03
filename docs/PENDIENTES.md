@@ -127,8 +127,8 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 - [x] Datos del solicitante y panel fijo "Datos del servicio" (centro de costo, cliente, contrato,
       tipo de contrato, modalidad, días, sueldo básico y bonos fijos), cada dato con
       "Solicitar cambio" (crea la solicitud con ese `campo`).
-- [ ] TODO(negocio): la alerta de Salario Mínimo Nacional compara hoy el **haber básico diurno**
-      (el "Sueldo básico" del original). Confirmar si debe ser diurno + nocturno u otro monto.
+- [x] Alerta de Salario Mínimo Nacional: compara **haber básico diurno + nocturno** con el SMN
+      vigente (confirmado 2026-11-03).
 
 ## Usuarios
 

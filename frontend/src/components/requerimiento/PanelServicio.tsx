@@ -68,9 +68,8 @@ export function PanelServicio({
   const fila = filas.find((f) => f.cargo.id === cargoId)
   const cargos = filas.map((f) => ({ id: f.cargo.id, nombre: f.cargo.nombre }))
   const smn = parametros.data?.vigentes.find((v) => v.parametro === SALARIO_MINIMO_NACIONAL)
-  // TODO(negocio): confirmar contra qué se compara el SMN (hoy: haber básico diurno, como el
-  // "Sueldo básico" del original; ¿o diurno + nocturno?).
-  const bajoMinimo = !!fila && !!smn && Number(fila.haber_basico_diurno) < Number(smn.valor)
+  // Regla confirmada (2026-11-03): se compara el total de haberes (diurno + nocturno) con el SMN.
+  const bajoMinimo = !!fila && !!smn && Number(fila.total_haberes) < Number(smn.valor)
   const cargando = elegido && (servicios.isPending || matriz.isPending)
 
   const comun = { servicioId, cargos, habilitado: !!s }
@@ -129,7 +128,8 @@ export function PanelServicio({
                     {bajoMinimo && smn && (
                       <p className="flex gap-1.5 rounded-lg bg-advertencia/15 p-2 text-xs font-normal text-[#B45309]" role="alert">
                         <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
-                        Por debajo del Salario Mínimo Nacional vigente ({formatParametro(smn.parametro, smn.valor)})
+                        Haber básico (diurno + nocturno) {bs(fila.total_haberes)}: por debajo del Salario Mínimo Nacional vigente (
+                        {formatParametro(smn.parametro, smn.valor)})
                       </p>
                     )}
                   </div>
