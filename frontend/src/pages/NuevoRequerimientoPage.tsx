@@ -10,16 +10,17 @@ import {
   type CrearRequerimiento,
   type TipoRequerimiento,
   useCrearRequerimiento,
-  useMatrizServicio,
+  useMe,
   useOpcionesRequerimiento,
 } from '@/api'
 import { ErrorApi } from '@/components/ErrorApi'
+import { PanelServicio } from '@/components/requerimiento/PanelServicio'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capacitacionCalculada } from '@/lib/capacitacion'
-import { formatFecha, formatMonto } from '@/lib/format'
+import { formatFecha } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const TIPOS: { valor: TipoRequerimiento; titulo: string; detalle: string }[] = [
@@ -115,56 +116,6 @@ function Seccion({ titulo, children }: { titulo: string; children: React.ReactNo
   )
 }
 
-/**
- * Vista previa de lo que se congela al crear: los mismos datos de la fila de la Matriz de
- * Servicio (servicio_cargos + bonos configurados). La base toma la foto al guardar.
- */
-function VistaPrevia({ servicioId, cargoId }: { servicioId: string; cargoId: string }) {
-  const { data, isPending, error } = useMatrizServicio({ servicio_id: servicioId }, { enabled: !!servicioId })
-  const fila = data?.find((f) => f.cargo.id === cargoId && f.servicio.id === servicioId)
-  const bs = (m: string | null) => (m == null ? '—' : `Bs ${formatMonto(m)}`)
-  if (error) return <ErrorApi error={error} />
-  if (isPending) return <Skeleton className="h-24 rounded-xl" />
-  if (!fila) {
-    return (
-      <p className="rounded-lg border border-dashed bg-white p-3 text-sm text-nova-gris">
-        No hay composición salarial visible para este servicio y cargo.
-      </p>
-    )
-  }
-  return (
-    <div className="grid gap-2 rounded-xl border border-nova-azul/30 bg-nova-hielo/40 p-4" aria-label="Sueldo que se congela">
-      <p className="text-sm font-semibold text-nova-titulo">Se va a congelar</p>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_auto_auto_auto]">
-        <dt className="text-nova-gris">Haber básico diurno</dt>
-        <dd className="tabular-nums">{bs(fila.haber_basico_diurno)}</dd>
-        <dt className="text-nova-gris">Haber básico nocturno</dt>
-        <dd className="tabular-nums">{bs(fila.haber_basico_nocturno)}</dd>
-      </dl>
-      <div className="text-sm">
-        <p className="text-nova-gris">Bonos configurados</p>
-        {fila.metricas.length === 0 ? (
-          <p>—</p>
-        ) : (
-          <ul className="grid gap-0.5">
-            {fila.metricas.map((m) => (
-              <li key={m.id} className="flex max-w-sm justify-between gap-3">
-                <span>{m.nombre}</span>
-                <span className="tabular-nums">{bs(m.monto_bono)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <p className="text-sm">
-        <span className="text-nova-gris">Total ganado: </span>
-        <span className="font-semibold tabular-nums text-nova-azul">{bs(fila.total_ganado)}</span>
-        <span className="text-xs text-nova-gris"> (sin ajustar por cumplimiento real; los bonos extra se suman aparte)</span>
-      </p>
-    </div>
-  )
-}
-
 function Exito({ folio, otro }: { folio: string; otro: () => void }) {
   return (
     <div className="mx-auto grid max-w-lg place-items-center rounded-xl border bg-card px-6 py-12 text-center shadow-nova-sm">
@@ -189,6 +140,7 @@ function Exito({ folio, otro }: { folio: string; otro: () => void }) {
 
 export function NuevoRequerimientoPage() {
   const opciones = useOpcionesRequerimiento()
+  const { data: me } = useMe()
   const crear = useCrearRequerimiento()
   const {
     register,
@@ -267,8 +219,10 @@ export function NuevoRequerimientoPage() {
 
   const sinServicios = datos.servicios.length === 0 && datos.cargos_staff.length === 0
 
+  const sinServicio = servicio === SIN_SERVICIO
+
   return (
-    <form onSubmit={enviar} noValidate className="mx-auto grid max-w-4xl gap-5">
+    <div className="grid gap-5">
       <div>
         <h2 className="text-2xl font-semibold text-nova-titulo">Nuevo requerimiento</h2>
         <p className="mt-1 text-sm text-nova-gris">
@@ -276,210 +230,181 @@ export function NuevoRequerimientoPage() {
         </p>
       </div>
 
-      {sinServicios && (
-        <div className="flex gap-3 rounded-xl border border-advertencia/40 bg-advertencia/10 p-4 text-sm">
-          <Info className="mt-0.5 size-4 shrink-0 text-[#B45309]" aria-hidden />
-          No tenés servicios asignados con cargos configurados. Pedile a RR.HH. que te asigne uno.
-        </div>
-      )}
-
-      <Seccion titulo="1. Tipo de requerimiento">
-        <div role="radiogroup" aria-label="Tipo" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {TIPOS.filter((t) => datos.tipos.includes(t.valor)).map((t) => (
-            <label
-              key={t.valor}
-              className={cn(
-                'cursor-pointer rounded-lg border bg-white p-3 transition-colors hover:border-nova-azul-medio',
-                tipo === t.valor && 'border-nova-azul bg-nova-hielo ring-1 ring-nova-azul',
-              )}
-            >
-              <input type="radio" value={t.valor} className="sr-only" {...register('tipo')} />
-              <span className="block font-medium text-nova-titulo">{t.titulo}</span>
-              <span className="block text-xs text-nova-gris">{t.detalle}</span>
-            </label>
-          ))}
-        </div>
-        {errors.tipo && (
-          <p className="mt-2 text-xs text-error" role="alert">
-            {errors.tipo.message}
-          </p>
-        )}
-      </Seccion>
-
-      <Seccion titulo="2. Puesto">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo id="servicio" etiqueta="Servicio" error={errors.servicio?.message}>
-            <select id="servicio" className={selectClase} aria-invalid={!!errors.servicio} {...register('servicio')}>
-              <option value="">Elegí un servicio…</option>
-              {datos.servicios.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre}
-                </option>
-              ))}
-              {datos.cargos_staff.length > 0 && <option value={SIN_SERVICIO}>Sin servicio (cargo administrativo)</option>}
-            </select>
-          </Campo>
-          <Campo
-            id="cargo_id"
-            etiqueta="Cargo"
-            error={errors.cargo_id?.message}
-            ayuda={servicio ? undefined : 'Primero elegí el servicio.'}
-          >
-            <select
-              id="cargo_id"
-              className={selectClase}
-              disabled={!servicio}
-              aria-invalid={!!errors.cargo_id}
-              {...register('cargo_id')}
-            >
-              <option value="">Elegí un cargo…</option>
-              {cargos.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <Campo id="cantidad" etiqueta="Cantidad de personas" error={errors.cantidad?.message}>
-            <Input
-              id="cantidad"
-              inputMode="numeric"
-              className="h-9 bg-white"
-              aria-invalid={!!errors.cantidad}
-              {...register('cantidad')}
-            />
-          </Campo>
-          <Campo id="motivo" etiqueta="Motivo" error={errors.motivo?.message}>
-            <select id="motivo" className={selectClase} aria-invalid={!!errors.motivo} {...register('motivo')}>
-              <option value="">Elegí un motivo…</option>
-              {datos.motivos.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </Campo>
-        </div>
-      </Seccion>
-
-      {servicio && servicio !== SIN_SERVICIO && cargoId && <VistaPrevia servicioId={servicio} cargoId={cargoId} />}
-
-      <Seccion titulo="3. Fechas">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Campo
-            id="fecha_inicio_operacion"
-            etiqueta="Inicio de operación"
-            error={errors.fecha_inicio_operacion?.message}
-            ayuda="Dato central: desde aquí se calcula hacia atrás."
-          >
-            <Input
-              id="fecha_inicio_operacion"
-              type="date"
-              className="h-9 bg-white"
-              aria-invalid={!!errors.fecha_inicio_operacion}
-              {...register('fecha_inicio_operacion')}
-            />
-          </Campo>
-          {calculada ? (
-            <div className="grid gap-1.5">
-              <Label>Inicio de capacitación</Label>
-              <p className="flex h-9 items-center rounded-lg border border-dashed bg-nova-hielo px-2.5 text-sm font-medium text-nova-azul">
-                {formatFecha(calculada)}
-              </p>
-              <p className="text-xs text-nova-gris">Se calcula: inicio de operación − {dias} días del servicio.</p>
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <form onSubmit={enviar} noValidate className="grid min-w-0 gap-5">
+          {sinServicios && (
+            <div className="flex gap-3 rounded-xl border border-advertencia/40 bg-advertencia/10 p-4 text-sm">
+              <Info className="mt-0.5 size-4 shrink-0 text-[#B45309]" aria-hidden />
+              No tenés servicios asignados con cargos configurados. Pedile a RR.HH. que te asigne uno.
             </div>
-          ) : (
-            <Campo
-              id="fecha_inicio_capacitacion"
-              etiqueta="Inicio de capacitación"
-              error={errors.fecha_inicio_capacitacion?.message}
-            >
-              <Input
-                id="fecha_inicio_capacitacion"
-                type="date"
-                className="h-9 bg-white"
-                aria-invalid={!!errors.fecha_inicio_capacitacion}
-                {...register('fecha_inicio_capacitacion')}
-              />
-            </Campo>
           )}
-          <Campo id="fecha_fin" etiqueta="Fecha de fin (opcional)" error={errors.fecha_fin?.message}>
-            <Input id="fecha_fin" type="date" className="h-9 bg-white" {...register('fecha_fin')} />
-          </Campo>
-        </div>
-      </Seccion>
 
-      <Seccion titulo="4. Bonos extra (opcional)">
-        <p className="mb-3 text-sm text-nova-gris">
-          Los bonos configurados para el servicio y cargo se incluyen solos. Agregá aquí solo excepciones.
-        </p>
-        <div className="grid gap-3">
-          {bonos.fields.map((b, i) => {
-            const e = errors.bonos_extra?.[i]
-            return (
-              <div key={b.id} className="grid items-start gap-3 rounded-lg border bg-white p-3 sm:grid-cols-[1fr_9rem_1fr_auto]">
-                <Campo id={`bono-${i}-nombre`} etiqueta="Nombre" error={e?.nombre?.message}>
-                  <Input id={`bono-${i}-nombre`} className="h-9" {...register(`bonos_extra.${i}.nombre`)} />
-                </Campo>
-                <Campo id={`bono-${i}-monto`} etiqueta="Monto (Bs)" error={e?.monto?.message}>
-                  <Input
-                    id={`bono-${i}-monto`}
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    className="h-9 tabular-nums"
-                    {...register(`bonos_extra.${i}.monto`)}
-                  />
-                </Campo>
-                <Campo id={`bono-${i}-motivo`} etiqueta="Motivo" error={e?.motivo?.message}>
-                  <Input id={`bono-${i}-motivo`} className="h-9" {...register(`bonos_extra.${i}.motivo`)} />
-                </Campo>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="mt-6 text-nova-gris hover:text-error"
-                  onClick={() => bonos.remove(i)}
-                  aria-label={`Quitar bono ${i + 1}`}
+          <Seccion titulo="1. Datos del solicitante">
+            <dl className="grid gap-3 sm:grid-cols-3">
+              {(
+                [
+                  ['Nombre', me?.nombre],
+                  ['Cargo', me?.cargo],
+                  ['División', me?.division],
+                  ['Región', me?.region],
+                  ['Inmediato superior', me?.inmediato_superior ?? 'No asignado'],
+                ] as const
+              ).map(([t, v]) => (
+                <div key={t} className="grid gap-1">
+                  <dt className="text-xs tracking-wide text-nova-gris uppercase">{t}</dt>
+                  <dd className="rounded-lg bg-nova-hielo/60 px-2.5 py-2 text-sm text-nova-titulo">{v || '—'}</dd>
+                </div>
+              ))}
+            </dl>
+          </Seccion>
+
+          <Seccion titulo="2. Tipo de requerimiento">
+            <div role="radiogroup" aria-label="Tipo" className="grid gap-3 sm:grid-cols-2">
+              {TIPOS.filter((t) => datos.tipos.includes(t.valor)).map((t) => (
+                <label
+                  key={t.valor}
+                  className={cn(
+                    'cursor-pointer rounded-lg border bg-white p-3 transition-colors hover:border-nova-azul-medio',
+                    tipo === t.valor && 'border-nova-azul bg-nova-hielo ring-1 ring-nova-azul',
+                  )}
                 >
-                  <Trash2 />
+                  <input type="radio" value={t.valor} className="sr-only" {...register('tipo')} />
+                  <span className="block font-medium text-nova-titulo">{t.titulo}</span>
+                  <span className="block text-xs text-nova-gris">{t.detalle}</span>
+                </label>
+              ))}
+            </div>
+            {errors.tipo && (
+              <p className="mt-2 text-xs text-error" role="alert">
+                {errors.tipo.message}
+              </p>
+            )}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Campo id="cantidad" etiqueta="Cantidad de personas requeridas" error={errors.cantidad?.message}>
+                <Input id="cantidad" inputMode="numeric" className="h-9 bg-white" aria-invalid={!!errors.cantidad} {...register('cantidad')} />
+              </Campo>
+              <Campo id="motivo" etiqueta="Motivo del requerimiento" error={errors.motivo?.message}>
+                <select id="motivo" className={selectClase} aria-invalid={!!errors.motivo} {...register('motivo')}>
+                  <option value="">Elegí un motivo…</option>
+                  {datos.motivos.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            </div>
+          </Seccion>
+
+          <Seccion titulo="3. Servicio y cargo">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo id="servicio" etiqueta="Servicio" error={errors.servicio?.message}>
+                <select id="servicio" className={selectClase} aria-invalid={!!errors.servicio} {...register('servicio')}>
+                  <option value="">Elegí un servicio…</option>
+                  {datos.servicios.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre}
+                    </option>
+                  ))}
+                  {datos.cargos_staff.length > 0 && <option value={SIN_SERVICIO}>Sin servicio (cargo administrativo)</option>}
+                </select>
+              </Campo>
+              <Campo id="cargo_id" etiqueta="Cargo" error={errors.cargo_id?.message} ayuda={servicio ? undefined : 'Primero elegí el servicio.'}>
+                <select id="cargo_id" className={selectClase} disabled={!servicio} aria-invalid={!!errors.cargo_id} {...register('cargo_id')}>
+                  <option value="">Elegí un cargo…</option>
+                  {cargos.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            </div>
+          </Seccion>
+
+          <Seccion titulo="4. Bonos extra (opcional)">
+            <p className="mb-3 text-sm text-nova-gris">
+              Los bonos fijos del servicio y cargo se incluyen solos (ver panel derecho). Agregá aquí solo excepciones.
+            </p>
+            <div className="grid gap-3">
+              {bonos.fields.map((b, i) => {
+                const e = errors.bonos_extra?.[i]
+                return (
+                  <div key={b.id} className="grid items-start gap-3 rounded-lg border bg-white p-3 sm:grid-cols-[1fr_9rem_1fr_auto]">
+                    <Campo id={`bono-${i}-nombre`} etiqueta="Nombre" error={e?.nombre?.message}>
+                      <Input id={`bono-${i}-nombre`} className="h-9" {...register(`bonos_extra.${i}.nombre`)} />
+                    </Campo>
+                    <Campo id={`bono-${i}-monto`} etiqueta="Monto (Bs)" error={e?.monto?.message}>
+                      <Input id={`bono-${i}-monto`} inputMode="decimal" placeholder="0.00" className="h-9 tabular-nums" {...register(`bonos_extra.${i}.monto`)} />
+                    </Campo>
+                    <Campo id={`bono-${i}-motivo`} etiqueta="Motivo" error={e?.motivo?.message}>
+                      <Input id={`bono-${i}-motivo`} className="h-9" {...register(`bonos_extra.${i}.motivo`)} />
+                    </Campo>
+                    <Button type="button" variant="ghost" size="icon" className="mt-6 text-nova-gris hover:text-error" onClick={() => bonos.remove(i)} aria-label={`Quitar bono ${i + 1}`}>
+                      <Trash2 />
+                    </Button>
+                  </div>
+                )
+              })}
+              {bonos.fields.length < 20 && (
+                <Button type="button" variant="outline" className="justify-self-start" onClick={() => bonos.append({ nombre: '', monto: '', motivo: '' })}>
+                  <Plus aria-hidden /> Agregar bono extra
                 </Button>
+              )}
+            </div>
+          </Seccion>
+
+          <Seccion titulo="5. Datos adicionales">
+            <div className="grid gap-4 sm:grid-cols-3">
+              {calculada ? (
+                <div className="grid content-start gap-1.5">
+                  <Label>Inicio de capacitación</Label>
+                  <p className="flex h-9 items-center rounded-lg border border-dashed bg-nova-hielo px-2.5 text-sm font-medium text-nova-azul">{formatFecha(calculada)}</p>
+                  <p className="text-xs text-nova-gris">Se calcula: inicio de operación − {dias} días.</p>
+                </div>
+              ) : (
+                <Campo id="fecha_inicio_capacitacion" etiqueta="Inicio de capacitación" error={errors.fecha_inicio_capacitacion?.message}>
+                  <Input id="fecha_inicio_capacitacion" type="date" className="h-9 bg-white" aria-invalid={!!errors.fecha_inicio_capacitacion} {...register('fecha_inicio_capacitacion')} />
+                </Campo>
+              )}
+              <Campo id="fecha_inicio_operacion" etiqueta="Inicio de operación" error={errors.fecha_inicio_operacion?.message} ayuda="Dato central: desde aquí se calcula hacia atrás.">
+                <Input id="fecha_inicio_operacion" type="date" className="h-9 bg-white" aria-invalid={!!errors.fecha_inicio_operacion} {...register('fecha_inicio_operacion')} />
+              </Campo>
+              <div className="grid content-start gap-1.5">
+                <Label>Tiempo de capacitación (días)</Label>
+                {/* Lo define el servicio (la base no deja cambiarlo al crear). */}
+                <p className="flex h-9 items-center rounded-lg bg-nova-hielo/60 px-2.5 text-sm text-nova-titulo">{dias ?? '—'}</p>
               </div>
-            )
-          })}
-          {bonos.fields.length < 20 && (
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-self-start"
-              onClick={() => bonos.append({ nombre: '', monto: '', motivo: '' })}
-            >
-              <Plus aria-hidden /> Agregar bono extra
+              <Campo id="fecha_fin" etiqueta="Fecha de fin (opcional)" error={errors.fecha_fin?.message}>
+                <Input id="fecha_fin" type="date" className="h-9 bg-white" {...register('fecha_fin')} />
+              </Campo>
+            </div>
+            <div className="mt-4 grid gap-1.5">
+              <Label htmlFor="comentarios">Comentarios adicionales</Label>
+              <textarea
+                id="comentarios"
+                rows={3}
+                className="w-full rounded-lg border border-input bg-white px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                {...register('comentarios')}
+              />
+              {errors.comentarios && <p className="text-xs text-error">{errors.comentarios.message}</p>}
+            </div>
+          </Seccion>
+
+          {crear.error && <ErrorApi error={crear.error} />}
+
+          <div className="flex flex-wrap justify-end gap-2 pb-4">
+            <Link to="/requerimientos" className={buttonVariants({ variant: 'outline' })}>
+              Cancelar
+            </Link>
+            <Button type="submit" disabled={crear.isPending || sinServicios}>
+              {crear.isPending ? 'Guardando…' : 'Crear requerimiento'}
             </Button>
-          )}
-        </div>
-      </Seccion>
+          </div>
+        </form>
 
-      <Seccion titulo="5. Comentarios (opcional)">
-        <textarea
-          id="comentarios"
-          rows={3}
-          aria-label="Comentarios"
-          className="w-full rounded-lg border border-input bg-white px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          {...register('comentarios')}
-        />
-        {errors.comentarios && <p className="text-xs text-error">{errors.comentarios.message}</p>}
-      </Seccion>
-
-      {crear.error && <ErrorApi error={crear.error} />}
-
-      <div className="flex flex-wrap justify-end gap-2 pb-4">
-        <Link to="/requerimientos" className={buttonVariants({ variant: 'outline' })}>
-          Cancelar
-        </Link>
-        <Button type="submit" disabled={crear.isPending || sinServicios}>
-          {crear.isPending ? 'Guardando…' : 'Crear requerimiento'}
-        </Button>
+        <PanelServicio servicioId={sinServicio ? '' : servicio} cargoId={cargoId} sinServicio={sinServicio} />
       </div>
-    </form>
+    </div>
   )
 }
