@@ -6,6 +6,7 @@ import {
   type MetricaCatalogoCfg,
   type UmbralCfg,
   useAsignarMetrica,
+  useConfigGuardar,
   useConfigLista,
   useEditarMetricaAsignada,
   useMetricasAsignadas,
@@ -17,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatMonto } from '@/lib/format'
 
 const DECIMAL = /^\d{1,9}(\.\d{1,4})?$/
+/** Valor del selector para crear una métrica nueva en el catálogo. */
+const NUEVA = '__nueva__'
 const celda = 'h-8 w-full rounded-md border border-input bg-white px-2 text-sm tabular-nums disabled:bg-muted'
 
 type Tramo = { intervalo_min: string; intervalo_max: string; pct_bono: string; observaciones: string }
@@ -181,6 +184,9 @@ export function MetricasEditor({ servicioCargoId, esRrhh }: { servicioCargoId: s
   const asignadas = useMetricasAsignadas(servicioCargoId)
   const catalogo = useConfigLista<MetricaCatalogoCfg>('catalogo-metricas')
   const asignar = useAsignarMetrica(servicioCargoId)
+  // Alta de una métrica en el catálogo sin salir de la fila (no hay pestaña de catálogo).
+  const crearEnCatalogo = useConfigGuardar('catalogo-metricas')
+  const [nombreNueva, setNombreNueva] = useState('')
   const [metrica, setMetrica] = useState('')
   const [peso, setPeso] = useState('')
   const [monto, setMonto] = useState('')
@@ -193,8 +199,17 @@ export function MetricasEditor({ servicioCargoId, esRrhh }: { servicioCargoId: s
   const disponibles = (catalogo.data ?? []).filter((m) => !usadas.has(m.id))
   const total = asignadas.data.reduce((s, m) => s + Number(m.monto_bono), 0)
 
+  const crearMetrica = () => {
+    if (!nombreNueva.trim()) return setAviso('Escribí el nombre de la nueva métrica.')
+    setAviso(undefined)
+    crearEnCatalogo.mutate(
+      { body: { nombre: nombreNueva.trim(), concepto: null, formula: null } },
+      { onSuccess: ({ id }) => (setMetrica(id), setNombreNueva('')) },
+    )
+  }
+
   const agregar = () => {
-    if (!metrica) return setAviso('Elegí una métrica del catálogo.')
+    if (!metrica || metrica === NUEVA) return setAviso('Elegí una métrica del catálogo.')
     if (!DECIMAL.test(peso) || !DECIMAL.test(monto)) return setAviso('Peso y monto: números no negativos (punto decimal).')
     setAviso(undefined)
     asignar.mutate({ metrica_id: metrica, peso_pct: peso, monto_bono: monto }, { onSuccess: () => (setMetrica(''), setPeso(''), setMonto('')) })
@@ -222,8 +237,20 @@ export function MetricasEditor({ servicioCargoId, esRrhh }: { servicioCargoId: s
                     {m.nombre}
                   </option>
                 ))}
+                <option value={NUEVA}>+ Nueva métrica…</option>
               </select>
             </label>
+            {metrica === NUEVA && (
+              <>
+                <label className="grid gap-1 text-xs text-nova-gris">
+                  Nombre de la nueva métrica
+                  <input className={`${celda} w-52`} value={nombreNueva} onChange={(e) => setNombreNueva(e.target.value)} />
+                </label>
+                <Button size="sm" variant="outline" disabled={crearEnCatalogo.isPending} onClick={crearMetrica}>
+                  Crear en el catálogo
+                </Button>
+              </>
+            )}
             <label className="grid gap-1 text-xs text-nova-gris">
               Peso (%)
               <input className={`${celda} w-24`} value={peso} onChange={(e) => setPeso(e.target.value)} />
@@ -242,6 +269,7 @@ export function MetricasEditor({ servicioCargoId, esRrhh }: { servicioCargoId: s
             </p>
           )}
           {asignar.error ? <ErrorApi error={asignar.error} /> : null}
+          {crearEnCatalogo.error ? <ErrorApi error={crearEnCatalogo.error} /> : null}
         </div>
       )}
     </div>
