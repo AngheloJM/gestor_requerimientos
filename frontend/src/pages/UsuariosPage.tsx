@@ -16,6 +16,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
+import { DEPARTAMENTOS } from '@/lib/catalogos'
 import { ETIQUETAS_ROL, etiquetaRol } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
@@ -127,7 +129,16 @@ function Editor({
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="region">Región</Label>
-          <Input id="region" className="h-9 bg-white" maxLength={120} value={region} onChange={(e) => cambio(setRegion)(e.target.value)} />
+          <select id="region" className={selectClase} value={region} onChange={(e) => cambio(setRegion)(e.target.value)}>
+            <option value="">Sin región</option>
+            {/* Valor previo fuera del catálogo: se conserva. */}
+            {region && !DEPARTAMENTOS.includes(region as (typeof DEPARTAMENTOS)[number]) && <option value={region}>{region}</option>}
+            {DEPARTAMENTOS.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="rol">Rol</Label>
@@ -139,16 +150,13 @@ function Editor({
             ))}
           </select>
         </div>
-        <label className="flex items-center gap-2 self-end pb-2 text-sm">
-          <input
-            type="checkbox"
-            className="size-4 accent-nova-azul"
-            checked={activo}
-            disabled={esYo}
-            onChange={(e) => cambio(setActivo)(e.target.checked)}
-          />
-          Activo
-        </label>
+        <div className="grid gap-1.5">
+          <Label htmlFor="activo">Activo</Label>
+          <span className="flex h-9 items-center gap-2 text-sm">
+            <Switch id="activo" checked={activo} disabled={esYo} onChange={cambio(setActivo)} />
+            <span className={activo ? 'font-medium text-nova-azul' : 'text-nova-gris'}>{activo ? 'Sí' : 'No'}</span>
+          </span>
+        </div>
       </div>
       {esYo && (
         <p className="flex gap-2 text-xs text-nova-gris">

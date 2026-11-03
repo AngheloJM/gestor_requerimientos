@@ -10,6 +10,7 @@ import {
 } from '@/api'
 import { EstadoBadge } from '@/components/EstadoBadge'
 import { CrudSeccion, numeroONulo, texto, textoONulo, type Valores } from '@/components/matriz/CrudSeccion'
+import { DEPARTAMENTOS } from '@/lib/catalogos'
 import { formatFecha } from '@/lib/format'
 
 type Permisos = { esRrhh: boolean }
@@ -185,9 +186,21 @@ export function Servicios({ esRrhh }: Permisos) {
           ],
         },
         { nombre: 'dias_trabajo', etiqueta: 'Días de trabajo', tipo: 'multiselect', opciones: () => pares(cat.data?.dias) },
-        { nombre: 'departamento_region', etiqueta: 'Departamento / región', tipo: 'texto' },
+        {
+          nombre: 'departamento_region',
+          etiqueta: 'Departamento / región',
+          tipo: 'select',
+          otro: true,
+          opciones: () => pares([...DEPARTAMENTOS]),
+        },
         { nombre: 'manual_funciones_codigo', etiqueta: 'Código de manual de funciones', tipo: 'texto' },
-        { nombre: 'tiempo_capacitacion_dias', etiqueta: 'Tiempo de capacitación (días)', tipo: 'numero' },
+        {
+          nombre: 'tiempo_capacitacion_dias',
+          etiqueta: 'Tiempo de capacitación (días)',
+          tipo: 'select',
+          otro: true,
+          opciones: () => Array.from({ length: 30 }, (_, i) => [String(i + 1), `${i + 1} día${i ? 's' : ''}`]),
+        },
         { nombre: 'capacitacion_pagada', etiqueta: 'Capacitación pagada', tipo: 'switch' },
         { nombre: 'tiene_refrigerio', etiqueta: 'Tiene refrigerio', tipo: 'switch' },
         { nombre: 'activo', etiqueta: 'Activo', tipo: 'switch' },
