@@ -84,8 +84,8 @@ export function useHistorialAprobacion(id: string | null) {
 export function useEditarFechaFin() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, fecha_fin, glosa }: EditarFechaFin) =>
-      api.patch<Aprobacion>(`/aprobaciones/${encodeURIComponent(id)}`, { fecha_fin, glosa }),
+    mutationFn: ({ id, ...body }: EditarFechaFin) =>
+      api.patch<Aprobacion>(`/aprobaciones/${encodeURIComponent(id)}`, body),
     onSuccess: (actualizada) => {
       qc.setQueryData<Aprobacion[]>(queryKeys.aprobaciones, (prev) =>
         prev?.map((a) => (a.id === actualizada.id ? actualizada : a)),
