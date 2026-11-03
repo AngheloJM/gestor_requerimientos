@@ -207,6 +207,37 @@ export interface GuardarRol {
   permisos: PermisoAsignado[]
 }
 
+// GET /usuarios · GET /usuarios/opciones · PUT /usuarios/{id}  (editar: solo RR.HH., RLS)
+export interface UsuarioAdmin {
+  id: Uuid
+  nombre: string
+  cargo: Ref | null
+  division: string | null
+  region: string | null
+  inmediato_superior: Ref | null
+  rol: Rol | string
+  activo: boolean
+  servicios: Ref[]
+}
+
+export interface OpcionesUsuario {
+  cargos: Ref[]
+  /** Servicios activos. */
+  servicios: Ref[]
+  /** Un usuario = un rol (CHECK de la base). */
+  roles: Rol[]
+}
+
+export interface GuardarUsuario {
+  cargo_id: Uuid | null
+  division: string | null
+  region: string | null
+  inmediato_superior_id: Uuid | null
+  rol: Rol
+  activo: boolean
+  servicios: Uuid[]
+}
+
 // GET /aprobaciones · PATCH /aprobaciones/{id} · GET /aprobaciones/{id}/historial
 export interface Aprobacion {
   id: Uuid

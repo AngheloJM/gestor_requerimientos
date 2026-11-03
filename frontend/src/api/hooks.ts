@@ -13,12 +13,15 @@ import type {
   FilaMatriz,
   FiltrosMatriz,
   GuardarRol,
+  GuardarUsuario,
   CrearRequerimiento,
   Me,
   OpcionesRequerimiento,
+  OpcionesUsuario,
   Permiso,
   Requerimiento,
   RolConfigurable,
+  UsuarioAdmin,
   Tablero,
 } from '@/api/types'
 
@@ -35,6 +38,7 @@ export const queryKeys = {
   tablero: ['tablero'] as const,
   permisos: ['permisos'] as const,
   roles: ['roles'] as const,
+  usuarios: ['usuarios'] as const,
   rol: (id: string) => ['roles', id] as const,
 }
 
@@ -186,6 +190,34 @@ export function useEliminarRol() {
     onSuccess: (_, id) => {
       qc.removeQueries({ queryKey: queryKeys.rol(id) })
       void qc.invalidateQueries({ queryKey: queryKeys.roles, exact: true })
+    },
+  })
+}
+
+// --- Usuarios (administración) -----------------------------------------------------------
+
+export function useUsuarios() {
+  return useQuery({
+    queryKey: queryKeys.usuarios,
+    queryFn: ({ signal }) => api.get<UsuarioAdmin[]>('/usuarios', undefined, signal),
+  })
+}
+
+export function useOpcionesUsuario() {
+  return useQuery({
+    queryKey: ['usuarios', 'opciones'] as const,
+    queryFn: ({ signal }) => api.get<OpcionesUsuario>('/usuarios/opciones', undefined, signal),
+    staleTime: 60_000,
+  })
+}
+
+export function useGuardarUsuario(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: GuardarUsuario) => api.put<UsuarioAdmin>(`/usuarios/${encodeURIComponent(id)}`, body),
+    onSuccess: (u) => {
+      qc.setQueryData<UsuarioAdmin[]>(queryKeys.usuarios, (prev) => prev?.map((x) => (x.id === u.id ? u : x)))
+      void qc.invalidateQueries({ queryKey: queryKeys.me })
     },
   })
 }

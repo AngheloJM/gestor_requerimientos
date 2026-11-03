@@ -6,6 +6,7 @@ import {
   LogOut,
   Menu,
   ShieldCheck,
+  Users,
   Table2,
   X,
 } from 'lucide-react'
@@ -15,6 +16,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useMe } from '@/api'
 import { useAuth } from '@/auth/useAuth'
 import { Logo } from '@/components/marca/Logo'
+import { etiquetaRol } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
@@ -24,15 +26,10 @@ const LINKS = [
   { to: '/almanaque', label: 'Almanaque', icono: CalendarDays },
   // Solo se oculta en el menú; la autorización real la aplica RLS en la base.
   { to: '/aprobaciones', label: 'Aprobaciones', icono: ClipboardCheck, soloRol: 'rrhh_admin' },
+  { to: '/usuarios', label: 'Usuarios', icono: Users, soloRol: 'rrhh_admin' },
   { to: '/roles', label: 'Roles y permisos', icono: ShieldCheck, soloRol: 'rrhh_admin' },
 ] as const
 
-const ROLES: Record<string, string> = {
-  rrhh_admin: 'RR.HH. · Administrador',
-  encargado_costos: 'Costos',
-  estandar: 'Encargado de servicio',
-  externo: 'Externo',
-}
 
 function iniciales(nombre: string | null | undefined): string {
   const partes = (nombre ?? '?').trim().split(/\s+/)
@@ -75,7 +72,7 @@ function Usuario() {
       </span>
       <div className="min-w-0 flex-1 leading-tight">
         <p className="truncate text-sm font-medium text-white">{me?.nombre ?? '…'}</p>
-        <p className="truncate text-xs text-white/60">{me?.rol ? (ROLES[me.rol] ?? me.rol) : ''}</p>
+        <p className="truncate text-xs text-white/60">{etiquetaRol(me?.rol)}</p>
       </div>
       <button
         type="button"

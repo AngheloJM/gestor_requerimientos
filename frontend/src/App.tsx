@@ -11,6 +11,7 @@ import { RolEditorPage } from '@/pages/RolEditorPage'
 import { RolesPage } from '@/pages/RolesPage'
 import { Pendiente } from '@/pages/Pendiente'
 import { TableroPage } from '@/pages/TableroPage'
+import { UsuariosPage } from '@/pages/UsuariosPage'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/tablero" element={<TableroPage />} />
             <Route path="/requerimientos" element={<MisRequerimientosPage />} />
             <Route path="/nuevo-requerimiento" element={<NuevoRequerimientoPage />} />
+            <Route path="/usuarios" element={<UsuariosPage />} />
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/roles/:id" element={<RolEditorPage />} />
             <Route path="/matriz" element={<Pendiente titulo="Matriz de servicio" hook="useMatrizServicio" />} />
