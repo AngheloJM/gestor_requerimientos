@@ -90,6 +90,13 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 - [ ] **Contraseñas filtradas**: validar contra listas conocidas (HIBP k-anonymity).
 - [ ] **HTTPS en producción** + `HSTS=true`.
 
+## Roles y permisos
+
+- [ ] **Migración `0003_roles_permisos.sql`** (aditiva): aplicada solo en local. Aplicarla en
+      Supabase requiere confirmación. Ver `docs/PLAN_ROLES.md` (fases 2–4 y preguntas abiertas).
+- [ ] TODO(negocio): quién administra roles (hoy `rrhh_admin`), si un usuario puede tener varios
+      roles, y si `estandar` ve montos (`sueldos.ver_montos`; hoy RLS se los muestra).
+
 ## Frontend
 
 - [ ] Copiar el código de Lovable y portar las pantallas de matriz, almanaque y aprobaciones.

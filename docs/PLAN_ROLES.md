@@ -1,6 +1,8 @@
 # Plan: roles y permisos configurables
 
-Estado: **borrador para definir**. Nada de esto está implementado ni aplicado en la base.
+Estado (2026-11-03): **fases 0 y 1 implementadas, solo en la base local** (migración
+`0003_roles_permisos.sql`, pantallas "Roles y permisos"). **No aplicadas en producción**:
+requieren confirmación. Fases 2 a 4 sin implementar.
 Objetivo: poder crear roles nuevos (ej. "Gerente") y decidir, por módulo y acción, qué puede
 **ver**, **crear**, **editar** o **aprobar** cada uno, sin tocar código para cada caso.
 
