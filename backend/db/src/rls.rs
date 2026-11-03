@@ -4,7 +4,13 @@
 //! ```sql
 //! SET LOCAL ROLE authenticated;
 //! SELECT set_config('request.jwt.claims', '{"sub":"<user_id>","role":"authenticated"}', true);
+//! -- Forma antigua (variables separadas), por compatibilidad:
+//! SELECT set_config('request.jwt.claim.sub', '<user_id>', true);
+//! SELECT set_config('request.jwt.claim.role', 'authenticated', true);
 //! ```
+//! Se definen ambas formas porque según la versión de Supabase `auth.uid()` lee
+//! `request.jwt.claims` y/o `request.jwt.claim.sub` (la imagen `supabase/postgres` sin el
+//! servicio Auth trae la versión que lee solo `request.jwt.claim.sub`).
 //! Ambos son locales a la transacción (`SET LOCAL` / `is_local = true`): al terminar
 //! (commit o rollback) se descartan, así que no se filtran a otro usuario aunque la conexión
 //! vuelva al pool o pase por pgbouncer/Supavisor en modo transacción.
@@ -27,10 +33,15 @@ pub async fn begin_como_usuario(
         .await?;
     // JSON construido con serde (no por concatenación de strings).
     let claims = serde_json::json!({ "sub": usuario.to_string(), "role": "authenticated" });
-    sqlx::query("SELECT set_config('request.jwt.claims', $1, true)")
-        .bind(claims.to_string())
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query(
+        "SELECT set_config('request.jwt.claims', $1, true),
+                set_config('request.jwt.claim.sub', $2, true),
+                set_config('request.jwt.claim.role', 'authenticated', true)",
+    )
+    .bind(claims.to_string())
+    .bind(usuario.to_string())
+    .execute(&mut *tx)
+    .await?;
     Ok(tx)
 }
 

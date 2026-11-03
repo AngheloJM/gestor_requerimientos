@@ -17,6 +17,15 @@ async fn identidad_se_propaga_a_postgres(pool: db::PgPool) {
             .unwrap();
     assert_eq!(rol, "authenticated");
     assert_eq!(uid_pg, Some(uid(COSTOS)));
+
+    // Forma antigua, que lee el auth.uid() de algunas versiones de Supabase.
+    let (sub, role): (String, String) = sqlx::query_as(
+        "SELECT current_setting('request.jwt.claim.sub'), current_setting('request.jwt.claim.role')",
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .unwrap();
+    assert_eq!((sub.as_str(), role.as_str()), (COSTOS, "authenticated"));
 }
 
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
@@ -50,7 +59,8 @@ async fn set_local_no_se_filtra_entre_requests(_o: PgPoolOptions, conn: PgConnec
     tx.commit().await.unwrap();
 
     let (rol, claims): (String, Option<String>) = sqlx::query_as(
-        "SELECT current_user::text, nullif(current_setting('request.jwt.claims', true), '')",
+        "SELECT current_user::text, coalesce(nullif(current_setting('request.jwt.claims', true), ''),
+                                             nullif(current_setting('request.jwt.claim.sub', true), ''))",
     )
     .fetch_one(&pool)
     .await
