@@ -124,7 +124,8 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 
 ## Revisión con la clienta del 04/11/2026
 
-Aplicado (migración `0004_revision_matriz.sql`, aditiva):
+Aplicado (migración `0004_revision_matriz.sql`, aditiva; **aplicada en producción el 2026-11-06**
+con respaldo previo `pg_dump` del esquema public guardado fuera del repositorio):
 
 - [x] Tablero: indicadores con el número solo (sin "2/4"); al tocarlos despliegan la lista
       (incompletos con % de completitud). Título del Kanban: "Cantidad de servicios no completos";

@@ -2,7 +2,8 @@
 -- ADITIVA: solo agrega columnas NULLABLE, tablas y políticas NUEVAS. No modifica ni borra
 -- columnas, datos, políticas ni funciones existentes. Idempotente (se puede re-ejecutar).
 --
--- NO aplicada en producción (Supabase): requiere confirmación explícita antes de aplicarla.
+-- Aplicada en producción (Supabase) el 2026-11-06, con respaldo previo del esquema public
+-- (pg_dump -Fc) y ensayo con ROLLBACK. Confirmada por el usuario.
 
 -- ---------------------------------------------------------------------------------------
 -- Contratos: tiempo de renovación (cuánto antes del vencimiento empezar a renegociar).
