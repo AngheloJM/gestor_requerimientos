@@ -117,6 +117,7 @@ fn protected_routes(state: AppState) -> Router<AppState> {
             get(requerimientos::listar).post(requerimientos::crear),
         )
         .route("/requerimientos/opciones", get(requerimientos::opciones))
+        .route("/requerimientos/{id}", get(requerimientos::detalle))
         .route(
             "/parametros-salariales",
             get(parametros::listar).post(parametros::registrar),

@@ -230,3 +230,95 @@ pub async fn crear(conn: &mut PgConnection, n: &NuevoRequerimiento) -> Result<St
         .await?;
     Ok(folio)
 }
+
+// ---------------------------------------------------------------------------------------
+// Detalle de un requerimiento (pantalla de solo lectura)
+// ---------------------------------------------------------------------------------------
+
+/// Visibilidad: la decide RLS (`requerimientos_select`). Mismo criterio que el listado: solo
+/// servicios activos (o sin servicio). Los datos del servicio son los **actuales**; sueldo,
+/// bonos y tiempo de capacitación son los congelados al crear (`*_snap`).
+const QUERY_DETALLE: &str = r#"
+SELECT
+    r.id, r.numero::int8 AS numero, r.folio::text AS folio, r.tipo::text AS tipo,
+    r.estado::text AS estado, r.motivo::text AS motivo, r.cantidad_personas::int4 AS cantidad,
+    r.fecha_inicio::date AS fecha_inicio, r.fecha_fin_tentativa::date AS fecha_fin_tentativa,
+    r.fecha_inicio_capacitacion::date AS fecha_inicio_capacitacion,
+    r.fecha_inicio_operacion::date AS fecha_inicio_operacion,
+    r.comentarios_adicionales::text AS comentarios,
+    r.haber_basico_diurno_snap::numeric AS haber_basico_diurno,
+    r.haber_basico_nocturno_snap::numeric AS haber_basico_nocturno,
+    r.bonos_snap AS bonos, r.tiempo_capacitacion_snap::int4 AS tiempo_capacitacion_dias,
+    r.created_at::timestamptz AS creado,
+    u.nombre::text AS solicitante_nombre, uc.nombre::text AS solicitante_cargo,
+    u.division::text AS solicitante_division, u.region::text AS solicitante_region,
+    sup.nombre::text AS inmediato_superior,
+    s.nombre::text AS servicio_nombre, s.codigo::text AS servicio_codigo,
+    c.nombre::text AS cargo_nombre, c.tipo::text AS cargo_tipo,
+    cc.codigo || ' · ' || cc.nombre AS centro_costo, cl.nombre::text AS cliente,
+    CASE WHEN k.nombre IS NULL THEN k.codigo ELSE k.codigo || ' · ' || k.nombre END AS contrato,
+    s.tipo_contrato::text AS tipo_contrato, s.modalidad::text AS modalidad,
+    s.tipo_turno::text AS tipo_turno, s.dias_trabajo AS dias_trabajo,
+    s.departamento_region::text AS departamento_region
+FROM requerimientos r
+LEFT JOIN servicios s              ON s.id = r.servicio_id
+LEFT JOIN cargos c                 ON c.id = r.cargo_id
+LEFT JOIN centros_costo cc         ON cc.id = s.centro_costo_id
+LEFT JOIN clientes cl              ON cl.id = s.cliente_id
+LEFT JOIN contratos_comerciales k  ON k.id = s.contrato_comercial_id
+LEFT JOIN usuarios u               ON u.id = r.solicitante_id
+LEFT JOIN cargos uc                ON uc.id = u.cargo_id
+LEFT JOIN usuarios sup             ON sup.id = u.inmediato_superior_id
+WHERE r.id = $1 AND (r.servicio_id IS NULL OR s.activo IS TRUE)
+"#;
+
+#[derive(Debug, Clone, serde::Serialize, FromRow)]
+pub struct DetalleRequerimiento {
+    pub id: Uuid,
+    pub numero: i64,
+    pub folio: Option<String>,
+    pub tipo: Option<String>,
+    pub estado: Option<String>,
+    pub motivo: Option<String>,
+    pub cantidad: Option<i32>,
+    pub fecha_inicio: NaiveDate,
+    pub fecha_fin_tentativa: Option<NaiveDate>,
+    pub fecha_inicio_capacitacion: Option<NaiveDate>,
+    pub fecha_inicio_operacion: Option<NaiveDate>,
+    pub comentarios: Option<String>,
+    pub haber_basico_diurno: Option<Decimal>,
+    pub haber_basico_nocturno: Option<Decimal>,
+    /// Tal como lo guarda la base: `{metrica, monto}` (configurados) y
+    /// `{tipo: "extra", nombre, monto, motivo}` (extra).
+    pub bonos: Option<serde_json::Value>,
+    pub tiempo_capacitacion_dias: Option<i32>,
+    pub creado: DateTime<Utc>,
+    pub solicitante_nombre: Option<String>,
+    pub solicitante_cargo: Option<String>,
+    pub solicitante_division: Option<String>,
+    pub solicitante_region: Option<String>,
+    pub inmediato_superior: Option<String>,
+    pub servicio_nombre: Option<String>,
+    pub servicio_codigo: Option<String>,
+    pub cargo_nombre: Option<String>,
+    pub cargo_tipo: Option<String>,
+    pub centro_costo: Option<String>,
+    pub cliente: Option<String>,
+    pub contrato: Option<String>,
+    pub tipo_contrato: Option<String>,
+    pub modalidad: Option<String>,
+    pub tipo_turno: Option<String>,
+    pub dias_trabajo: Option<Vec<String>>,
+    pub departamento_region: Option<String>,
+}
+
+/// `None` si no existe o RLS no lo deja ver.
+pub async fn detalle(
+    conn: &mut PgConnection,
+    id: Uuid,
+) -> Result<Option<DetalleRequerimiento>, DbError> {
+    Ok(sqlx::query_as(QUERY_DETALLE)
+        .bind(id)
+        .fetch_optional(conn)
+        .await?)
+}

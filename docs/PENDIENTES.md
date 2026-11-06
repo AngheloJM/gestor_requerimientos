@@ -166,6 +166,13 @@ A confirmar / TODO(negocio):
 
 ## Nuevo requerimiento
 
+- [x] **Detalle del requerimiento** (`/requerimientos/{id}`, solo lectura): al hacer clic en
+      "Mis requerimientos". Muestra solicitante, tipo, asignación administrativa (datos
+      **actuales** del servicio), fechas, sueldo y bonos **congelados al crear** y comentarios.
+      Visibilidad por RLS; servicios inactivos no se muestran (igual que el listado).
+- [ ] TODO(negocio): en Lovable, cantidad y motivo aparecen como campos editables en el detalle;
+      acá son de solo lectura hasta definir quién puede editarlos y en qué estado.
+
 - [x] Datos del solicitante y panel fijo "Datos del servicio" (centro de costo, cliente, contrato,
       tipo de contrato, modalidad, días, sueldo básico y bonos fijos), cada dato con
       "Solicitar cambio" (crea la solicitud con ese `campo`).

@@ -1,6 +1,6 @@
 import { ClipboardCheck, FileText, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { type Requerimiento, useMe, useRequerimientos } from '@/api'
 import { ESTADOS_REQUERIMIENTO, EstadoRequerimiento, etiquetaTipo } from '@/components/EstadoRequerimiento'
@@ -47,6 +47,7 @@ function Segmento<T extends string>({
 }
 
 function Tabla({ filas }: { filas: Requerimiento[] }) {
+  const navegar = useNavigate()
   return (
     <div className="hidden overflow-x-auto rounded-xl border bg-card shadow-nova-sm md:block">
       <table className="w-full text-sm">
@@ -61,9 +62,11 @@ function Tabla({ filas }: { filas: Requerimiento[] }) {
         </thead>
         <tbody className="divide-y">
           {filas.map((r) => (
-            <tr key={r.id} className="hover:bg-nova-hielo/40">
+            <tr key={r.id} className="cursor-pointer hover:bg-nova-hielo/40" onClick={() => navegar(`/requerimientos/${r.id}`)}>
               <td className="px-4 py-3 font-medium whitespace-nowrap text-nova-titulo">
-                {folio(r)}
+                <Link to={`/requerimientos/${r.id}`} className="hover:text-nova-azul hover:underline" onClick={(e) => e.stopPropagation()}>
+                  {folio(r)}
+                </Link>
                 {r.es_mio && <span className="ml-2 text-xs font-normal text-nova-naranja">mío</span>}
               </td>
               <td className="px-4 py-3">{texto(r.servicio?.nombre)}</td>
@@ -92,7 +95,9 @@ function Tarjetas({ filas }: { filas: Requerimiento[] }) {
         <li key={r.id} className="rounded-xl border bg-card p-4 shadow-nova-sm">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-semibold text-nova-titulo">{folio(r)}</p>
+              <Link to={`/requerimientos/${r.id}`} className="font-semibold text-nova-titulo hover:text-nova-azul hover:underline">
+                {folio(r)}
+              </Link>
               <p className="text-sm text-nova-texto-2">
                 {texto(r.servicio?.nombre)} · {texto(r.cargo.nombre)}
               </p>

@@ -6,6 +6,7 @@ import { AlmanaquePage } from '@/pages/AlmanaquePage'
 import { AprobacionesPage } from '@/pages/AprobacionesPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { MatrizPage } from '@/pages/MatrizPage'
+import { RequerimientoDetallePage } from '@/pages/RequerimientoDetallePage'
 import { MisRequerimientosPage } from '@/pages/MisRequerimientosPage'
 import { NuevoRequerimientoPage } from '@/pages/NuevoRequerimientoPage'
 import { ParametrosPage } from '@/pages/ParametrosPage'
@@ -23,6 +24,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/tablero" element={<TableroPage />} />
             <Route path="/requerimientos" element={<MisRequerimientosPage />} />
+            <Route path="/requerimientos/:id" element={<RequerimientoDetallePage />} />
             <Route path="/nuevo-requerimiento" element={<NuevoRequerimientoPage />} />
             <Route path="/usuarios" element={<UsuariosPage />} />
             <Route path="/roles" element={<RolesPage />} />

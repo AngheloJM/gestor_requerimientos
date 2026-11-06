@@ -135,6 +135,55 @@ export interface Requerimiento {
   creado: Timestamp
 }
 
+// GET /requerimientos/{id} — detalle de solo lectura
+/** Bono congelado al crear: configurado `{metrica, monto}` o extra `{tipo:'extra', nombre, monto, motivo}`. */
+export interface BonoCongelado {
+  metrica?: string
+  tipo?: string
+  nombre?: string
+  monto?: number | string
+  motivo?: string
+}
+
+export interface RequerimientoDetalle {
+  id: Uuid
+  numero: number
+  folio: string | null
+  tipo: string | null
+  estado: EstadoRequerimiento | string | null
+  motivo: string | null
+  cantidad: number | null
+  fecha_inicio: FechaIso
+  fecha_fin_tentativa: FechaIso | null
+  fecha_inicio_capacitacion: FechaIso | null
+  fecha_inicio_operacion: FechaIso | null
+  comentarios: string | null
+  /** Congelados al crear. */
+  haber_basico_diurno: Monto | null
+  haber_basico_nocturno: Monto | null
+  bonos: BonoCongelado[] | null
+  tiempo_capacitacion_dias: number | null
+  creado: Timestamp
+  solicitante_nombre: string | null
+  solicitante_cargo: string | null
+  solicitante_division: string | null
+  solicitante_region: string | null
+  inmediato_superior: string | null
+  /** Datos actuales del servicio. */
+  servicio_nombre: string | null
+  servicio_codigo: string | null
+  cargo_nombre: string | null
+  cargo_tipo: string | null
+  centro_costo: string | null
+  cliente: string | null
+  contrato: string | null
+  tipo_contrato: string | null
+  modalidad: string | null
+  tipo_turno: string | null
+  dias_trabajo: string[] | null
+  departamento_region: string | null
+}
+
 // GET /requerimientos/opciones · POST /requerimientos
 export type TipoRequerimiento = 'nuevo' | 'modificacion' | 'promocion' | 'cambio'
 /** `cargos.tipo` en la base. */

@@ -22,6 +22,7 @@ import type {
   Parametros,
   Permiso,
   Requerimiento,
+  RequerimientoDetalle,
   RolConfigurable,
   UsuarioAdmin,
   Tablero,
@@ -71,6 +72,14 @@ export function useAlmanaque(anio: number, mes: number) {
 }
 
 /** Requerimientos visibles (RLS). `mios` = solo los que pidió el usuario. */
+export function useRequerimiento(id: string | undefined) {
+  return useQuery({
+    queryKey: ['requerimientos', 'detalle', id] as const,
+    queryFn: ({ signal }) => api.get<RequerimientoDetalle>(`/requerimientos/${encodeURIComponent(id!)}`, undefined, signal),
+    enabled: !!id,
+  })
+}
+
 export function useRequerimientos(mios: boolean) {
   return useQuery({
     queryKey: queryKeys.requerimientos(mios),

@@ -1,6 +1,7 @@
 //! GET  /requerimientos[?mios=true] — "Mis requerimientos".
 //! GET  /requerimientos/opciones   — servicios/cargos elegibles y catálogos del formulario.
 //! POST /requerimientos            — crea vía `crear_requerimiento_con_snapshot` → 201 {folio}.
+//! GET  /requerimientos/{id}       — detalle de solo lectura (404 si no existe o RLS no lo deja ver).
 //!
 //! Devuelve lo que RLS permite ver (RR.HH.: todos). Con `mios=true`, solo los que pidió el
 //! usuario. Cada fila indica `es_mio` y su `estado`, para que el solicitante vea si fue
@@ -8,7 +9,7 @@
 
 use axum::{
     Json,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
 };
 use chrono::NaiveDate;
@@ -217,4 +218,16 @@ pub async fn crear(
     tx.commit().await?;
     tracing::info!(usuario_id = %user.user_id, %folio, "requerimiento creado");
     Ok((StatusCode::CREATED, Json(CreadoDto { folio })))
+}
+
+pub async fn detalle(
+    State(pool): State<PgPool>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<db::requerimientos::DetalleRequerimiento>> {
+    let mut tx = tx_usuario(&pool, &user).await?;
+    db::requerimientos::detalle(&mut tx, id)
+        .await?
+        .map(Json)
+        .ok_or(ApiError::NotFound)
 }

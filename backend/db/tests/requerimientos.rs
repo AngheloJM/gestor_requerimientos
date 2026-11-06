@@ -279,3 +279,45 @@ async fn reglas_de_creacion_de_la_base(pool: db::PgPool) {
         "Ese cargo no pertenece al servicio elegido."
     );
 }
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(migrations = false, fixtures("supabase_subset", "rls_test", "datos"))]
+async fn detalle_respeta_rls_y_servicio_activo(pool: db::PgPool) {
+    preparar(&pool).await;
+    sqlx::query(
+        "UPDATE requerimientos SET bonos_snap = '[{\"metrica\":\"Calidad\",\"monto\":150}]',
+         haber_basico_diurno_snap = 3000 WHERE id = $1",
+    )
+    .bind(uid(REQ_81))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let detalle = |usuario: &'static str, req: &'static str| {
+        let pool = pool.clone();
+        async move {
+            let mut tx = como(&pool, usuario).await;
+            db::requerimientos::detalle(&mut tx, uid(req))
+                .await
+                .unwrap()
+        }
+    };
+    // RR.HH. ve el detalle completo, con datos del servicio y lo congelado.
+    let d = detalle(RRHH, REQ_81).await.expect("visible para RR.HH.");
+    assert_eq!(d.servicio_nombre.as_deref(), Some("Call center"));
+    assert_eq!(d.cargo_nombre.as_deref(), Some("Operador"));
+    assert_eq!(d.centro_costo.as_deref(), Some("CC-01 · Centro Uno"));
+    assert_eq!(d.cantidad, Some(3));
+    assert_eq!(
+        d.haber_basico_diurno,
+        Some(rust_decimal::Decimal::from(3000))
+    );
+    assert_eq!(d.bonos.unwrap()[0]["metrica"], "Calidad");
+    // Servicio inactivo: no se muestra (como en el listado).
+    assert!(
+        detalle(RRHH, "00000000-0000-0000-0000-000000000085")
+            .await
+            .is_none()
+    );
+    // Sin servicios asignados y sin ser solicitante: RLS no lo deja ver.
+    assert!(detalle(SIN_SERVICIOS, REQ_81).await.is_none());
+}
