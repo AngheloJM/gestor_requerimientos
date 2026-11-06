@@ -24,6 +24,9 @@ SELECT
     sc.haber_basico_nocturno::numeric  AS haber_basico_nocturno,
     sc.cantidad_mujeres::int4          AS cantidad_mujeres,
     sc.cantidad_hombres::int4          AS cantidad_hombres,
+    sc.tiempo_capacitacion_dias::int4  AS tiempo_capacitacion_dias,
+    sc.tiempo_ojt_dias::int4           AS tiempo_ojt_dias,
+    sc.tiempo_capacitacion_ajustada_dias::int4 AS tiempo_capacitacion_ajustada_dias,
     s.id               AS servicio_id,
     s.codigo::text     AS servicio_codigo,
     s.nombre::text     AS servicio_nombre,
@@ -87,6 +90,9 @@ struct FilaRow {
     haber_basico_nocturno: Option<Decimal>,
     cantidad_mujeres: Option<i32>,
     cantidad_hombres: Option<i32>,
+    tiempo_capacitacion_dias: Option<i32>,
+    tiempo_ojt_dias: Option<i32>,
+    tiempo_capacitacion_ajustada_dias: Option<i32>,
     servicio_id: Uuid,
     servicio_codigo: Option<String>,
     servicio_nombre: String,
@@ -237,6 +243,11 @@ pub async fn listar_matriz(
                 haber_basico_nocturno: r.haber_basico_nocturno,
                 cantidad_mujeres: r.cantidad_mujeres,
                 cantidad_hombres: r.cantidad_hombres,
+                tiempos: domain::composicion_salarial::TiemposCapacitacion {
+                    capacitacion_dias: r.tiempo_capacitacion_dias,
+                    ojt_dias: r.tiempo_ojt_dias,
+                    capacitacion_ajustada_dias: r.tiempo_capacitacion_ajustada_dias,
+                },
                 metricas: metricas_por_sc
                     .remove(&r.servicio_cargo_id)
                     .unwrap_or_default(),

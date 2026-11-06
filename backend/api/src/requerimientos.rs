@@ -98,6 +98,9 @@ pub struct CargoOpcionDto {
     pub id: Uuid,
     pub nombre: String,
     pub tipo: Option<String>,
+    /// Referencia informativa (requerimientos de crecimiento); no se autocompleta nada.
+    pub cantidad_mujeres: Option<i32>,
+    pub cantidad_hombres: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -122,6 +125,8 @@ fn cargo_dto(c: CargoOpcion) -> CargoOpcionDto {
         id: c.id.into(),
         nombre: c.nombre,
         tipo: c.tipo,
+        cantidad_mujeres: c.cantidad_mujeres,
+        cantidad_hombres: c.cantidad_hombres,
     }
 }
 

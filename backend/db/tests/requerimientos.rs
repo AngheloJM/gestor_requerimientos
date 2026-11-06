@@ -125,7 +125,14 @@ fn regla(r: Result<String, DbError>) -> String {
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
 #[sqlx::test(
     migrations = false,
-    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_creacion")
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_creacion",
+        "revision_matriz"
+    )
 )]
 async fn opciones_segun_servicios_del_usuario(pool: db::PgPool) {
     let mut tx = como(&pool, RRHH).await;
@@ -154,7 +161,14 @@ async fn opciones_segun_servicios_del_usuario(pool: db::PgPool) {
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
 #[sqlx::test(
     migrations = false,
-    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_creacion")
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_creacion",
+        "revision_matriz"
+    )
 )]
 async fn crea_pendiente_con_snapshot_y_bonos_extra(pool: db::PgPool) {
     let mut n = nuevo(SOPORTE, TECNICO);
@@ -199,7 +213,14 @@ async fn crea_pendiente_con_snapshot_y_bonos_extra(pool: db::PgPool) {
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
 #[sqlx::test(
     migrations = false,
-    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_creacion")
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_creacion",
+        "revision_matriz"
+    )
 )]
 async fn capacitacion_se_calcula_hacia_atras(pool: db::PgPool) {
     sqlx::query("UPDATE cargos SET tipo = 'operativo' WHERE id = $1")
@@ -227,7 +248,14 @@ async fn capacitacion_se_calcula_hacia_atras(pool: db::PgPool) {
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
 #[sqlx::test(
     migrations = false,
-    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_creacion")
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_creacion",
+        "revision_matriz"
+    )
 )]
 async fn reglas_de_creacion_de_la_base(pool: db::PgPool) {
     assert_eq!(

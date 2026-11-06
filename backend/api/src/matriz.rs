@@ -92,6 +92,9 @@ pub struct FilaMatrizDto {
     pub haber_basico_nocturno: Option<Decimal>,
     pub cantidad_mujeres: Option<i32>,
     pub cantidad_hombres: Option<i32>,
+    pub tiempo_capacitacion_dias: Option<i32>,
+    pub tiempo_ojt_dias: Option<i32>,
+    pub tiempo_capacitacion_ajustada_dias: Option<i32>,
     /// Diurno + nocturno (nocturno NULL cuenta como 0).
     pub total_haberes: Decimal,
     /// Haberes + suma de `monto_bono` de las métricas configuradas.
@@ -136,6 +139,9 @@ impl From<FilaMatriz> for FilaMatrizDto {
             haber_basico_nocturno: c.haber_basico_nocturno.map(monto),
             cantidad_mujeres: c.cantidad_mujeres,
             cantidad_hombres: c.cantidad_hombres,
+            tiempo_capacitacion_dias: c.tiempos.capacitacion_dias,
+            tiempo_ojt_dias: c.tiempos.ojt_dias,
+            tiempo_capacitacion_ajustada_dias: c.tiempos.capacitacion_ajustada_dias,
             total_haberes: monto(c.total_haberes()),
             total_ganado: monto(c.total_ganado()),
             metricas: c.metricas.iter().map(MetricaDto::from).collect(),
@@ -213,6 +219,7 @@ mod tests {
                 haber_basico_nocturno: None,
                 cantidad_mujeres: None,
                 cantidad_hombres: None,
+                tiempos: Default::default(),
                 metricas: vec![MetricaBono {
                     id: ServicioCargoMetricaId::new(),
                     metrica_id: MetricaId::new(),

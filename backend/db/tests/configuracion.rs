@@ -39,8 +39,6 @@ fn servicio(
         capacitacion_pagada: true,
         tiene_refrigerio: false,
         activo: true,
-        tiempo_ojt_dias: None,
-        tiempo_capacitacion_ajustada_dias: None,
     }
 }
 
@@ -369,6 +367,9 @@ async fn composicion_metricas_y_escalas(pool: db::PgPool) {
         haber_basico_nocturno: Some(dec!(0)),
         cantidad_mujeres: Some(3),
         cantidad_hombres: Some(2),
+        tiempo_capacitacion_dias: Some(10),
+        tiempo_ojt_dias: Some(5),
+        tiempo_capacitacion_ajustada_dias: Some(12),
     };
     let sc = cfg::crear_composicion(&mut tx, uid(CALL_CENTER), cargo, &datos)
         .await
@@ -394,6 +395,9 @@ async fn composicion_metricas_y_escalas(pool: db::PgPool) {
                 haber_basico_nocturno: None,
                 cantidad_mujeres: None,
                 cantidad_hombres: None,
+                tiempo_capacitacion_dias: None,
+                tiempo_ojt_dias: None,
+                tiempo_capacitacion_ajustada_dias: None,
             }
         )
         .await

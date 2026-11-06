@@ -48,6 +48,13 @@ impl MetricaBono {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TiemposCapacitacion {
+    pub capacitacion_dias: Option<i32>,
+    pub ojt_dias: Option<i32>,
+    pub capacitacion_ajustada_dias: Option<i32>,
+}
+
 /// Fila de `servicio_cargos`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComposicionSalarial {
@@ -61,6 +68,8 @@ pub struct ComposicionSalarial {
     /// A confirmar: cantidades por cargo del servicio (migración 0004).
     pub cantidad_mujeres: Option<i32>,
     pub cantidad_hombres: Option<i32>,
+    /// Tiempos de capacitación del cargo en este servicio (días; migración 0004).
+    pub tiempos: TiemposCapacitacion,
     pub metricas: Vec<MetricaBono>,
 }
 
@@ -137,6 +146,7 @@ mod tests {
             haber_basico_nocturno: None,
             cantidad_mujeres: None,
             cantidad_hombres: None,
+            tiempos: TiemposCapacitacion::default(),
             metricas: vec![],
         };
         assert_eq!(c.total_haberes(), dec!(3000.00));
@@ -159,6 +169,7 @@ mod tests {
             haber_basico_nocturno: Some(dec!(500.50)),
             cantidad_mujeres: None,
             cantidad_hombres: None,
+            tiempos: TiemposCapacitacion::default(),
             metricas: vec![bono(dec!(200)), bono(dec!(100))],
             ..c
         };
@@ -170,6 +181,7 @@ mod tests {
             haber_basico_nocturno: Some(dec!(0)),
             cantidad_mujeres: None,
             cantidad_hombres: None,
+            tiempos: TiemposCapacitacion::default(),
             metricas: vec![bono(dec!(150))],
             ..c
         };

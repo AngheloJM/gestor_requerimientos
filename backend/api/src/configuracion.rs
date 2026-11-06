@@ -295,16 +295,6 @@ fn validar_servicio(d: cfg::DatosServicio) -> Result<cfg::DatosServicio, ApiErro
     {
         return Err(invalido("tiempo de capacitación: entre 0 y 3650 días"));
     }
-    if d.tiempo_ojt_dias.is_some_and(|v| !(0..=3650).contains(&v)) {
-        return Err(invalido("tiempo de OJT: entre 0 y 3650 días"));
-    }
-    if d.tiempo_capacitacion_ajustada_dias
-        .is_some_and(|v| !(0..=3650).contains(&v))
-    {
-        return Err(invalido(
-            "tiempo de capacitación ajustada: entre 0 y 3650 días",
-        ));
-    }
     Ok(cfg::DatosServicio {
         codigo: opcional("código", &d.codigo, 60)?,
         nombre: requerido("nombre", &d.nombre, 200)?,
@@ -560,6 +550,12 @@ pub struct NuevaComposicion {
     pub cantidad_mujeres: Option<i32>,
     #[serde(default)]
     pub cantidad_hombres: Option<i32>,
+    #[serde(default)]
+    pub tiempo_capacitacion_dias: Option<i32>,
+    #[serde(default)]
+    pub tiempo_ojt_dias: Option<i32>,
+    #[serde(default)]
+    pub tiempo_capacitacion_ajustada_dias: Option<i32>,
 }
 
 fn validar_montos(d: cfg::DatosComposicion) -> Result<cfg::DatosComposicion, ApiError> {
@@ -569,6 +565,18 @@ fn validar_montos(d: cfg::DatosComposicion) -> Result<cfg::DatosComposicion, Api
     ] {
         if v.is_some_and(|n| n < 0) {
             return Err(invalido(format!("{campo}: no puede ser negativa")));
+        }
+    }
+    for (campo, v) in [
+        ("tiempo de capacitación", d.tiempo_capacitacion_dias),
+        ("tiempo de OJT", d.tiempo_ojt_dias),
+        (
+            "tiempo de capacitación ajustada",
+            d.tiempo_capacitacion_ajustada_dias,
+        ),
+    ] {
+        if v.is_some_and(|n| !(0..=3650).contains(&n)) {
+            return Err(invalido(format!("{campo}: entre 0 y 3650 días")));
         }
     }
     Ok(cfg::DatosComposicion {
@@ -591,6 +599,9 @@ pub async fn crear_composicion(
         haber_basico_nocturno: b.haber_basico_nocturno,
         cantidad_mujeres: b.cantidad_mujeres,
         cantidad_hombres: b.cantidad_hombres,
+        tiempo_capacitacion_dias: b.tiempo_capacitacion_dias,
+        tiempo_ojt_dias: b.tiempo_ojt_dias,
+        tiempo_capacitacion_ajustada_dias: b.tiempo_capacitacion_ajustada_dias,
     })?;
     let mut tx = tx!(pool, user);
     let id = cfg::crear_composicion(&mut tx, b.servicio_id, b.cargo_id, &d)

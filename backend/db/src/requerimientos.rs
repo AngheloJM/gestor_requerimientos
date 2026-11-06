@@ -105,7 +105,8 @@ pub async fn listar(
 const QUERY_OPCIONES_SERVICIOS: &str = r#"
 SELECT s.id AS servicio_id, s.nombre::text AS servicio_nombre,
        s.tiempo_capacitacion_dias::int4 AS tiempo_capacitacion_dias,
-       c.id AS cargo_id, c.nombre::text AS cargo_nombre, c.tipo::text AS cargo_tipo
+       c.id AS cargo_id, c.nombre::text AS cargo_nombre, c.tipo::text AS cargo_tipo,
+       sc.cantidad_mujeres::int4 AS cantidad_mujeres, sc.cantidad_hombres::int4 AS cantidad_hombres
 FROM servicios s
 JOIN servicio_cargos sc ON sc.servicio_id = s.id
 JOIN cargos c ON c.id = sc.cargo_id
@@ -152,6 +153,8 @@ struct OpcionRow {
     cargo_id: Uuid,
     cargo_nombre: String,
     cargo_tipo: Option<String>,
+    cantidad_mujeres: Option<i32>,
+    cantidad_hombres: Option<i32>,
 }
 
 #[derive(FromRow)]
@@ -167,6 +170,8 @@ impl From<CargoRow> for CargoOpcion {
             id: c.cargo_id.into(),
             nombre: c.cargo_nombre,
             tipo: c.cargo_tipo,
+            cantidad_mujeres: None,
+            cantidad_hombres: None,
         }
     }
 }
@@ -181,6 +186,8 @@ pub async fn opciones(conn: &mut PgConnection) -> Result<OpcionesRequerimiento, 
             id: f.cargo_id.into(),
             nombre: f.cargo_nombre,
             tipo: f.cargo_tipo,
+            cantidad_mujeres: f.cantidad_mujeres,
+            cantidad_hombres: f.cantidad_hombres,
         };
         match servicios.last_mut() {
             Some(s) if Uuid::from(s.id) == f.servicio_id => s.cargos.push(cargo),

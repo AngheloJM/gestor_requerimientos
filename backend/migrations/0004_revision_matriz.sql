@@ -20,33 +20,32 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ---------------------------------------------------------------------------------------
--- Servicios: la capacitación son tres tiempos. `tiempo_capacitacion_dias` (existente) sigue
--- siendo "Tiempo de capacitación" y es el que usa crear_requerimiento_con_snapshot.
--- TODO(negocio): ¿cuál de los tres define la fecha de inicio de capacitación del requerimiento?
--- ---------------------------------------------------------------------------------------
-ALTER TABLE public.servicios
-    ADD COLUMN IF NOT EXISTS tiempo_ojt_dias                   integer,
-    ADD COLUMN IF NOT EXISTS tiempo_capacitacion_ajustada_dias integer;
-
-DO $$ BEGIN
-    ALTER TABLE public.servicios ADD CONSTRAINT servicios_tiempos_capacitacion_chk CHECK (
-        (tiempo_ojt_dias IS NULL OR tiempo_ojt_dias >= 0)
-        AND (tiempo_capacitacion_ajustada_dias IS NULL OR tiempo_capacitacion_ajustada_dias >= 0)
-    );
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
--- ---------------------------------------------------------------------------------------
--- Cargo dentro de un servicio: cantidad de mujeres y de hombres.
--- A confirmar: se guardan por cargo del servicio (servicio_cargos), no por servicio.
+-- Cargo dentro de un servicio (servicio_cargos, un valor por servicio + cargo):
+-- - cantidad de mujeres y de hombres (confirmado 2026-11-06);
+-- - tres tiempos de capacitación: capacitación, OJT y capacitación ajustada (dos cargos del
+--   mismo servicio pueden tener tiempos distintos; confirmado 2026-11-06).
+-- `servicios.tiempo_capacitacion_dias` (existente) NO se toca: lo sigue usando
+-- crear_requerimiento_con_snapshot. TODO(negocio): pasar esa función al valor por cargo.
 -- ---------------------------------------------------------------------------------------
 ALTER TABLE public.servicio_cargos
-    ADD COLUMN IF NOT EXISTS cantidad_mujeres integer,
-    ADD COLUMN IF NOT EXISTS cantidad_hombres integer;
+    ADD COLUMN IF NOT EXISTS cantidad_mujeres                  integer,
+    ADD COLUMN IF NOT EXISTS cantidad_hombres                  integer,
+    ADD COLUMN IF NOT EXISTS tiempo_capacitacion_dias          integer,
+    ADD COLUMN IF NOT EXISTS tiempo_ojt_dias                   integer,
+    ADD COLUMN IF NOT EXISTS tiempo_capacitacion_ajustada_dias integer;
 
 DO $$ BEGIN
     ALTER TABLE public.servicio_cargos ADD CONSTRAINT servicio_cargos_cantidades_chk CHECK (
         (cantidad_mujeres IS NULL OR cantidad_mujeres >= 0)
         AND (cantidad_hombres IS NULL OR cantidad_hombres >= 0)
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE public.servicio_cargos ADD CONSTRAINT servicio_cargos_tiempos_capacitacion_chk CHECK (
+        (tiempo_capacitacion_dias IS NULL OR tiempo_capacitacion_dias >= 0)
+        AND (tiempo_ojt_dias IS NULL OR tiempo_ojt_dias >= 0)
+        AND (tiempo_capacitacion_ajustada_dias IS NULL OR tiempo_capacitacion_ajustada_dias >= 0)
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 

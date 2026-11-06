@@ -83,6 +83,9 @@ pub struct CargoOpcion {
     pub nombre: String,
     /// `operativo` | `administrativo_staff` | sin definir.
     pub tipo: Option<String>,
+    /// Configurado en el servicio (solo referencia; vacío para cargos de staff).
+    pub cantidad_mujeres: Option<i32>,
+    pub cantidad_hombres: Option<i32>,
 }
 
 /// Servicio activo donde el usuario puede crear requerimientos, con sus cargos.
