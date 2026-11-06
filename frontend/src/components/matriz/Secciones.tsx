@@ -18,6 +18,12 @@ const todo = (esRrhh: boolean) => ({ crear: esRrhh, editar: esRrhh, eliminar: es
 const vacio = (v: string | null | undefined) => v || '—'
 const NUMERO_ENTERO = /^\d+$/
 
+/**
+ * Proyecto se oculta del front (revisión 04/11/2026): todavía no se usa. La tabla `proyectos`,
+ * su relación con cliente y `servicios.proyecto_id` se mantienen intactos en la base y en la API.
+ */
+const MOSTRAR_PROYECTOS = false
+
 // --- 1. Clientes y proyectos ---------------------------------------------------------------
 
 export function ClientesYProyectos({ esRrhh }: Permisos) {
@@ -28,6 +34,8 @@ export function ClientesYProyectos({ esRrhh }: Permisos) {
     <div className="grid gap-8">
       <CrudSeccion<ClienteCfg>
         titulo="Clientes"
+        // A confirmar con la clienta: redacción más formal del alta.
+        tituloNuevo="Registro de nuevo cliente"
         recurso="clientes"
         filas={clientes.data}
         cargando={clientes.isPending}
@@ -49,28 +57,30 @@ export function ClientesYProyectos({ esRrhh }: Permisos) {
         inicial={(c) => ({ nombre: c?.nombre ?? '', logo_url: c?.logo_url ?? '', manual_marca_url: c?.manual_marca_url ?? '' })}
         aBody={(v) => ({ nombre: texto(v, 'nombre'), logo_url: textoONulo(v, 'logo_url'), manual_marca_url: textoONulo(v, 'manual_marca_url') })}
       />
-      <CrudSeccion<ProyectoCfg>
-        titulo="Proyectos"
-        recurso="proyectos"
-        filas={proyectos.data}
-        cargando={proyectos.isPending}
-        error={proyectos.error}
-        // TODO(negocio): producción no tiene política DELETE en `proyectos`; la baja no está habilitada.
-        permisos={{ crear: esRrhh, editar: esRrhh, eliminar: false }}
-        nota="Eliminar proyectos no está habilitado: la base de producción no tiene permiso de borrado para esta tabla (pendiente)."
-        idDe={(p) => p.id}
-        nombreDe={(p) => p.nombre}
-        columnas={[
-          { titulo: 'Proyecto', valor: (p) => <span className="font-medium text-nova-titulo">{p.nombre}</span> },
-          { titulo: 'Cliente', valor: (p) => vacio(p.cliente_nombre) },
-        ]}
-        campos={[
-          { nombre: 'cliente_id', etiqueta: 'Cliente', tipo: 'select', requerido: true, opciones: opcionesClientes },
-          { nombre: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true },
-        ]}
-        inicial={(p) => ({ cliente_id: p?.cliente_id ?? '', nombre: p?.nombre ?? '' })}
-        aBody={(v) => ({ cliente_id: texto(v, 'cliente_id'), nombre: texto(v, 'nombre') })}
-      />
+      {MOSTRAR_PROYECTOS && (
+        <CrudSeccion<ProyectoCfg>
+          titulo="Proyectos"
+          recurso="proyectos"
+          filas={proyectos.data}
+          cargando={proyectos.isPending}
+          error={proyectos.error}
+          // TODO(negocio): producción no tiene política DELETE en `proyectos`; la baja no está habilitada.
+          permisos={{ crear: esRrhh, editar: esRrhh, eliminar: false }}
+          nota="Eliminar proyectos no está habilitado: la base de producción no tiene permiso de borrado para esta tabla (pendiente)."
+          idDe={(p) => p.id}
+          nombreDe={(p) => p.nombre}
+          columnas={[
+            { titulo: 'Proyecto', valor: (p) => <span className="font-medium text-nova-titulo">{p.nombre}</span> },
+            { titulo: 'Cliente', valor: (p) => vacio(p.cliente_nombre) },
+          ]}
+          campos={[
+            { nombre: 'cliente_id', etiqueta: 'Cliente', tipo: 'select', requerido: true, opciones: opcionesClientes },
+            { nombre: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true },
+          ]}
+          inicial={(p) => ({ cliente_id: p?.cliente_id ?? '', nombre: p?.nombre ?? '' })}
+          aBody={(v) => ({ cliente_id: texto(v, 'cliente_id'), nombre: texto(v, 'nombre') })}
+        />
+      )}
     </div>
   )
 }
@@ -132,7 +142,6 @@ export function Servicios({ esRrhh }: Permisos) {
         { titulo: 'Servicio', valor: (s) => <span className="font-medium text-nova-titulo">{s.nombre}</span>, clase: 'whitespace-nowrap' },
         { titulo: 'Centro de costo', valor: (s) => vacio(s.centro_costo_nombre), clase: 'whitespace-nowrap' },
         { titulo: 'Cliente', valor: (s) => vacio(s.cliente_nombre), clase: 'whitespace-nowrap' },
-        { titulo: 'Proyecto', valor: (s) => vacio(s.proyecto_nombre), clase: 'whitespace-nowrap' },
         { titulo: 'Contrato', valor: (s) => vacio(s.contrato_nombre), clase: 'whitespace-nowrap' },
         { titulo: 'Modalidad', valor: (s) => s.modalidad, clase: 'whitespace-nowrap' },
         { titulo: 'Días', valor: (s) => s.dias_trabajo.map((d) => d.slice(0, 3)).join(', ') || '—', clase: 'whitespace-nowrap' },
@@ -160,14 +169,7 @@ export function Servicios({ esRrhh }: Permisos) {
           alCambiar: (v) =>
             (proyectos.data ?? []).some((p) => p.id === v.proyecto_id && p.cliente_id === v.cliente_id) ? v : { ...v, proyecto_id: '' },
         },
-        {
-          nombre: 'proyecto_id',
-          etiqueta: 'Proyecto',
-          tipo: 'select',
-          ayuda: 'Solo proyectos del cliente elegido.',
-          deshabilitado: (v) => !v.cliente_id,
-          opciones: (v) => (proyectos.data ?? []).filter((p) => p.cliente_id === v.cliente_id).map((p) => [p.id, p.nombre]),
-        },
+        // Proyecto oculto (MOSTRAR_PROYECTOS): `proyecto_id` se conserva tal cual al editar.
         {
           nombre: 'contrato_comercial_id',
           etiqueta: 'Contrato comercial',

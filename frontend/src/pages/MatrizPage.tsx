@@ -17,12 +17,13 @@ import { cn } from '@/lib/utils'
 type Seccion = 'clientes' | 'centros' | 'servicios' | 'cargos' | 'composicion' | 'contratos'
 
 const SECCIONES: [Seccion, string][] = [
-  ['clientes', 'Clientes y proyectos'],
+  // Orden acordado en la revisión del 04/11/2026. Proyecto se oculta por ahora (sigue en la base).
+  ['clientes', 'Clientes'],
   ['centros', 'Centros de costo'],
-  ['servicios', 'Servicios'],
-  ['cargos', 'Cargos'],
-  ['composicion', 'Composición salarial'],
   ['contratos', 'Contratos'],
+  ['cargos', 'Cargos'],
+  ['servicios', 'Servicios'],
+  ['composicion', 'Composición salarial'],
 ]
 
 export function MatrizPage() {
@@ -78,10 +79,10 @@ export function MatrizPage() {
       <div role="tabpanel">
         {seccion === 'clientes' && <ClientesYProyectos esRrhh={esRrhh} />}
         {seccion === 'centros' && <CentrosCosto esRrhh={esRrhh} />}
-        {seccion === 'servicios' && <Servicios esRrhh={esRrhh} />}
-        {seccion === 'cargos' && <CargosSeccion esRrhh={esRrhh} />}
-        {seccion === 'composicion' && <ComposicionSalarial esRrhh={esRrhh} />}
         {seccion === 'contratos' && <Contratos esRrhh={esRrhh} />}
+        {seccion === 'cargos' && <CargosSeccion esRrhh={esRrhh} />}
+        {seccion === 'servicios' && <Servicios esRrhh={esRrhh} />}
+        {seccion === 'composicion' && <ComposicionSalarial esRrhh={esRrhh} />}
       </div>
     </div>
   )

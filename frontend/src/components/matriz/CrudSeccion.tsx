@@ -72,7 +72,8 @@ function Desplegable({
           set(c.nombre, nuevo === OTRO ? '' : nuevo)
         }}
       >
-        <option value="">{c.requerido ? 'Elegí…' : 'Sin asignar'}</option>
+        {/* A confirmar con la clienta: redacción más formal ("Seleccione una opción"). */}
+        <option value="">{c.requerido ? 'Seleccione una opción' : 'Sin asignar'}</option>
         {opciones.map(([val, txt]) => (
           <option key={val} value={val}>
             {txt}
@@ -236,6 +237,7 @@ function Formulario({
  */
 export function CrudSeccion<T>({
   titulo,
+  tituloNuevo,
   descripcion,
   recurso,
   filas,
@@ -252,6 +254,8 @@ export function CrudSeccion<T>({
   nota,
 }: {
   titulo: string
+  /** Título del formulario de alta (por defecto "Nuevo · {titulo}"). */
+  tituloNuevo?: string
   descripcion?: string
   recurso: RecursoConfig
   filas: T[] | undefined
@@ -306,7 +310,7 @@ export function CrudSeccion<T>({
       {editando && (
         <Formulario
           key={editando === 'nuevo' ? 'nuevo' : idDe(editando)}
-          titulo={editando === 'nuevo' ? `Nuevo · ${titulo}` : `Editar · ${nombreDe(editando)}`}
+          titulo={editando === 'nuevo' ? (tituloNuevo ?? `Nuevo · ${titulo}`) : `Editar · ${nombreDe(editando)}`}
           campos={campos}
           inicial={inicial(editando === 'nuevo' ? undefined : editando)}
           validar={validar}
