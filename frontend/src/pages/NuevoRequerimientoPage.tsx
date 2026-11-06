@@ -15,12 +15,12 @@ import {
 } from '@/api'
 import { ErrorApi } from '@/components/ErrorApi'
 import { PanelServicio } from '@/components/requerimiento/PanelServicio'
+import { PanelSolicitante } from '@/components/requerimiento/PanelSolicitante'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capacitacionCalculada } from '@/lib/capacitacion'
-import { formatFecha } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const TIPOS: { valor: TipoRequerimiento; titulo: string; detalle: string }[] = [
@@ -147,7 +147,6 @@ export function NuevoRequerimientoPage() {
     handleSubmit,
     control,
     setValue,
-    setError,
     reset,
     formState: { errors },
   } = useForm<Formulario>({ resolver: zodResolver(esquema), defaultValues: VACIO })
@@ -174,11 +173,11 @@ export function NuevoRequerimientoPage() {
   }, [cargos, cargoId, setValue])
 
   const enviar = handleSubmit((f) => {
-    const capacitacion = calculada ?? f.fecha_inicio_capacitacion
-    if (!FECHA.test(capacitacion)) {
-      setError('fecha_inicio_capacitacion', { message: 'Indicá la fecha de inicio de capacitación.' })
-      return
-    }
+    // Solo se pide la fecha de operación (revisión con la clienta). La base exige además la de
+    // capacitación: si el cargo es operativo y el servicio tiene días, la calcula ella misma
+    // (operación − días); si no, se envía la misma fecha de operación.
+    // A confirmar con la clienta: capacitación = operación cuando no hay días que restar.
+    const capacitacion = calculada ?? f.fecha_inicio_operacion
     const body: CrearRequerimiento = {
       tipo: f.tipo,
       servicio_id: f.servicio === SIN_SERVICIO ? null : f.servicio,
@@ -187,7 +186,7 @@ export function NuevoRequerimientoPage() {
       motivo: f.motivo,
       fecha_inicio_operacion: f.fecha_inicio_operacion,
       fecha_inicio_capacitacion: capacitacion,
-      fecha_fin: f.fecha_fin || null,
+      fecha_fin: null,
       comentarios: f.comentarios.trim() || null,
       bonos_extra: f.bonos_extra.map((b) => ({ nombre: b.nombre.trim(), monto: b.monto, motivo: b.motivo.trim() })),
     }
@@ -239,26 +238,7 @@ export function NuevoRequerimientoPage() {
             </div>
           )}
 
-          <Seccion titulo="1. Datos del solicitante">
-            <dl className="grid gap-3 sm:grid-cols-3">
-              {(
-                [
-                  ['Nombre', me?.nombre],
-                  ['Cargo', me?.cargo],
-                  ['División', me?.division],
-                  ['Región', me?.region],
-                  ['Inmediato superior', me?.inmediato_superior ?? 'No asignado'],
-                ] as const
-              ).map(([t, v]) => (
-                <div key={t} className="grid gap-1">
-                  <dt className="text-xs tracking-wide text-nova-gris uppercase">{t}</dt>
-                  <dd className="rounded-lg bg-nova-hielo/60 px-2.5 py-2 text-sm text-nova-titulo">{v || '—'}</dd>
-                </div>
-              ))}
-            </dl>
-          </Seccion>
-
-          <Seccion titulo="2. Tipo de requerimiento">
+          <Seccion titulo="1. Tipo de requerimiento">
             <div role="radiogroup" aria-label="Tipo" className="grid gap-3 sm:grid-cols-2">
               {TIPOS.filter((t) => datos.tipos.includes(t.valor)).map((t) => (
                 <label
@@ -296,7 +276,7 @@ export function NuevoRequerimientoPage() {
             </div>
           </Seccion>
 
-          <Seccion titulo="3. Servicio y cargo">
+          <Seccion titulo="2. Servicio y cargo">
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo id="servicio" etiqueta="Servicio" error={errors.servicio?.message}>
                 <select id="servicio" className={selectClase} aria-invalid={!!errors.servicio} {...register('servicio')}>
@@ -331,7 +311,7 @@ export function NuevoRequerimientoPage() {
             )}
           </Seccion>
 
-          <Seccion titulo="4. Bonos extra (opcional)">
+          <Seccion titulo="3. Bonos extra (opcional)">
             <p className="mb-3 text-sm text-nova-gris">
               Los bonos fijos del servicio y cargo se incluyen solos (ver panel derecho). Agregá aquí solo excepciones.
             </p>
@@ -363,34 +343,10 @@ export function NuevoRequerimientoPage() {
             </div>
           </Seccion>
 
-          <Seccion titulo="5. Datos adicionales">
+          <Seccion titulo="4. Datos adicionales">
             <div className="grid gap-4 sm:grid-cols-3">
-              {calculada ? (
-                <div className="grid content-start gap-1.5">
-                  <Label>Inicio de capacitación</Label>
-                  <p className="flex h-9 items-center rounded-lg border border-dashed bg-nova-hielo px-2.5 text-sm font-medium text-nova-azul">{formatFecha(calculada)}</p>
-                  <p className="text-xs text-nova-gris">Se calcula: inicio de operación − {dias} días.</p>
-                </div>
-              ) : (
-                <Campo id="fecha_inicio_capacitacion" etiqueta="Inicio de capacitación" error={errors.fecha_inicio_capacitacion?.message}>
-                  <Input id="fecha_inicio_capacitacion" type="date" className="h-9 bg-white" aria-invalid={!!errors.fecha_inicio_capacitacion} {...register('fecha_inicio_capacitacion')} />
-                </Campo>
-              )}
-              <Campo id="fecha_inicio_operacion" etiqueta="Inicio de operación" error={errors.fecha_inicio_operacion?.message} ayuda="Dato central: desde aquí se calcula hacia atrás.">
+              <Campo id="fecha_inicio_operacion" etiqueta="Fecha de inicio de operación" error={errors.fecha_inicio_operacion?.message}>
                 <Input id="fecha_inicio_operacion" type="date" className="h-9 bg-white" aria-invalid={!!errors.fecha_inicio_operacion} {...register('fecha_inicio_operacion')} />
-              </Campo>
-              <div className="grid content-start gap-1.5">
-                <Label>Tiempo de capacitación (días)</Label>
-                {/* Lo define el servicio: la función de la base rechaza enviarlo al crear. */}
-                <p className="flex h-9 items-center rounded-lg bg-nova-hielo/60 px-2.5 text-sm text-nova-titulo">{dias ?? '—'}</p>
-                <p className="text-xs text-nova-gris">
-                  {servicio && !sinServicio && dias == null
-                    ? 'Este servicio no tiene días de capacitación cargados: indicá la fecha de capacitación a mano. Se cargan en Matriz de servicio → Servicios.'
-                    : 'Lo define el servicio (Matriz de servicio → Servicios).'}
-                </p>
-              </div>
-              <Campo id="fecha_fin" etiqueta="Fecha de fin (opcional)" error={errors.fecha_fin?.message}>
-                <Input id="fecha_fin" type="date" className="h-9 bg-white" {...register('fecha_fin')} />
               </Campo>
             </div>
             <div className="mt-4 grid gap-1.5">
@@ -417,7 +373,12 @@ export function NuevoRequerimientoPage() {
           </div>
         </form>
 
-        <PanelServicio servicioId={sinServicio ? '' : servicio} cargoId={cargoId} sinServicio={sinServicio} />
+        <div className="grid min-w-0 gap-5">
+          <PanelSolicitante
+            datos={{ nombre: me?.nombre, cargo: me?.cargo, division: me?.division, region: me?.region, inmediato_superior: me?.inmediato_superior }}
+          />
+          <PanelServicio servicioId={sinServicio ? '' : servicio} cargoId={cargoId} sinServicio={sinServicio} />
+        </div>
       </div>
     </div>
   )

@@ -166,9 +166,17 @@ A confirmar / TODO(negocio):
 
 ## Nuevo requerimiento
 
+- [x] Datos del solicitante en la columna derecha, junto a los datos fijos del servicio (en
+      "Nuevo requerimiento" y en el detalle).
+- [x] **Solo fecha de inicio de operación** (pedido de la clienta): se quitaron del formulario
+      la fecha de inicio de capacitación, el tiempo de capacitación y la fecha de fin.
+- [ ] A confirmar: la base exige también la fecha de capacitación. Si el cargo es operativo y el
+      servicio tiene días, la calcula ella (operación − días); si no (staff, promoción o servicio
+      sin días), se envía la **misma fecha de operación**.
+
 - [x] **Detalle del requerimiento** (`/requerimientos/{id}`, solo lectura): al hacer clic en
       "Mis requerimientos". Muestra solicitante, tipo, asignación administrativa (datos
-      **actuales** del servicio), fechas, sueldo y bonos **congelados al crear** y comentarios.
+      **actuales** del servicio), fecha de operación, sueldo y bonos **congelados al crear** y comentarios.
       Visibilidad por RLS; servicios inactivos no se muestran (igual que el listado).
 - [ ] TODO(negocio): en Lovable, cantidad y motivo aparecen como campos editables en el detalle;
       acá son de solo lectura hasta definir quién puede editarlos y en qué estado.
