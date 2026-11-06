@@ -56,6 +56,7 @@ async fn edicion<'a>(
     EdicionRequerimiento {
         fecha_fin: Some(nueva),
         estado: None,
+        cantidad: None,
         version,
         glosa,
         categoria_desvio: None,
@@ -252,4 +253,78 @@ async fn solo_rrhh_cambia_el_estado(pool: db::PgPool) {
         actualizar(&mut tx, req84, e).await,
         Err(ActualizarError::Regla(m)) if m == "Campo exclusivo de RR.HH."
     ));
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion")
+)]
+async fn cantidad_actual_con_glosa_sin_tocar_la_original(pool: db::PgPool) {
+    // La referencia de creación la escribe un trigger al insertar; `datos` se cargó antes.
+    sqlx::query(
+        "INSERT INTO requerimiento_referencia (requerimiento_id, cantidad_original, origen) VALUES ($1, 3, 'creacion')",
+    )
+    .bind(uid(REQ_81))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let mut tx = como(&pool, RRHH).await;
+    let cantidad = |n: i32, e: EdicionRequerimiento<'static>| EdicionRequerimiento {
+        fecha_fin: None,
+        cantidad: Some(n),
+        ..e
+    };
+
+    // Sin glosa: lo rechaza la base.
+    let e = edicion(&mut tx, req81(), None, "").await;
+    assert!(matches!(
+        actualizar(&mut tx, req81(), cantidad(5, e)).await,
+        Err(ActualizarError::Regla(m)) if m.contains("Glosa")
+    ));
+    drop(tx);
+
+    // Por debajo de lo ya aceptado (3 en entregas aceptadas): rechazado.
+    let mut tx = como(&pool, RRHH).await;
+    let e = edicion(&mut tx, req81(), None, "baja").await;
+    assert!(matches!(
+        actualizar(&mut tx, req81(), cantidad(2, e)).await,
+        Err(ActualizarError::Regla(m)) if m.contains("inferior a lo ya aceptado")
+    ));
+    drop(tx);
+
+    // Aumento con glosa y desvío: cambia la actual, la original queda en 3, va al historial.
+    let mut tx = como(&pool, RRHH).await;
+    let mut e = cantidad(
+        5,
+        edicion(&mut tx, req81(), None, "el cliente pidió dos más").await,
+    );
+    e.categoria_desvio = Some("cambio_cliente");
+    e.detalle_desvio = Some("ampliación de campaña");
+    actualizar(&mut tx, req81(), e).await.unwrap();
+    let d = db::requerimientos::detalle(&mut tx, uid(REQ_81))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (d.cantidad, d.cantidad_original, d.total_aceptado),
+        (Some(5), Some(3), 3)
+    );
+    let h = historial(&mut tx, req81()).await.unwrap().unwrap();
+    let u = h.last().unwrap();
+    assert_eq!(
+        (
+            u.campo.as_str(),
+            u.valor_anterior.as_deref(),
+            u.valor_nuevo.as_deref(),
+            u.glosa.as_deref()
+        ),
+        (
+            "cantidad_personas",
+            Some("3"),
+            Some("5"),
+            Some("el cliente pidió dos más")
+        )
+    );
+    assert_eq!(u.categoria_desvio.as_deref(), Some("cambio_cliente"));
 }

@@ -7,9 +7,9 @@ import {
   type EstadoRequerimiento as Estado,
   useAprobaciones,
   useEditarRequerimiento,
-  useHistorialAprobacion,
 } from '@/api'
 import { ErrorApi } from '@/components/ErrorApi'
+import { HistorialCambios } from '@/components/requerimiento/HistorialCambios'
 import { ESTADOS_REQUERIMIENTO, EstadoRequerimiento, etiquetaTipo } from '@/components/EstadoRequerimiento'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -38,25 +38,6 @@ function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactN
   )
 }
 
-function Historial({ id }: { id: string }) {
-  const { data, isPending, error } = useHistorialAprobacion(id)
-  if (error) return <ErrorApi error={error} />
-  if (isPending) return <Skeleton className="h-16" />
-  if (!data.length) return <p className="text-sm text-nova-gris">Sin cambios registrados.</p>
-  return (
-    <ol className="grid gap-2">
-      {[...data].reverse().map((h) => (
-        <li key={h.id} className="rounded-lg border bg-white p-2.5 text-sm">
-          <p className="text-nova-titulo">
-            <span className="font-medium">{h.campo}</span>: {texto(h.valor_anterior)} → {texto(h.valor_nuevo)}
-          </p>
-          {h.glosa && <p className="mt-0.5 text-nova-texto-2">“{h.glosa}”</p>}
-          <p className="mt-0.5 text-xs text-nova-gris">{formatFecha(h.created_at.slice(0, 10))}</p>
-        </li>
-      ))}
-    </ol>
-  )
-}
 
 function Decision({ a, cerrar }: { a: Aprobacion; cerrar: () => void }) {
   const editar = useEditarRequerimiento()
@@ -187,7 +168,7 @@ function Decision({ a, cerrar }: { a: Aprobacion; cerrar: () => void }) {
         <h4 className="flex items-center gap-2 text-sm font-semibold text-nova-titulo">
           <History className="size-4" aria-hidden /> Historial
         </h4>
-        <Historial id={a.id} />
+        <HistorialCambios id={a.id} />
       </div>
     </aside>
   )

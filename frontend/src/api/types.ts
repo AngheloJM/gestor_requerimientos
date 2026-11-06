@@ -164,6 +164,14 @@ export interface RequerimientoDetalle {
   bonos: BonoCongelado[] | null
   tiempo_capacitacion_dias: number | null
   creado: Timestamp
+  /** updated_at con microsegundos: devolverlo tal cual al editar. */
+  version: Timestamp
+  /** Con cuánto arrancó el requerimiento (no se edita). */
+  cantidad_original: number | null
+  /** Suma de entregas aceptadas. */
+  total_aceptado: number
+  /** Suma de todas las entregas registradas (a confirmar). */
+  reclutados_informados: number
   solicitante_nombre: string | null
   solicitante_cargo: string | null
   solicitante_division: string | null
@@ -365,6 +373,16 @@ export interface EditarRequerimiento {
   /** Obligatoria: 3 a 2000 caracteres. */
   glosa: string
   /** Van juntas: categoría + explicación (3 a 2000 caracteres). */
+  categoria_desvio?: CategoriaDesvio
+  detalle_desvio?: string
+}
+
+/** PATCH /requerimientos/{id}: cambia la cantidad actual (glosa obligatoria). */
+export interface EditarCantidad {
+  id: Uuid
+  cantidad: number
+  version: Timestamp
+  glosa: string
   categoria_desvio?: CategoriaDesvio
   detalle_desvio?: string
 }

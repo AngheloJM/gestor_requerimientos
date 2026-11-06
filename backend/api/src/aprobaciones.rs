@@ -141,6 +141,20 @@ where
     Option::<T>::deserialize(d).map(Some)
 }
 
+/// Errores de `editar_requerimiento_con_historial` → HTTP (compartido con /requerimientos).
+pub(crate) fn error_edicion(e: ActualizarError) -> ApiError {
+    match e {
+        ActualizarError::NoEncontrado => ApiError::NotFound,
+        ActualizarError::SinPermiso => ApiError::Forbidden,
+        ActualizarError::Conflicto => {
+            ApiError::Conflict("el requerimiento cambió; volver a cargarlo antes de guardar".into())
+        }
+        ActualizarError::Validacion(e) => ApiError::Unprocessable(e.to_string()),
+        ActualizarError::Regla(m) => ApiError::Unprocessable(m),
+        ActualizarError::Db(e) => e.into(),
+    }
+}
+
 pub async fn listar(
     State(pool): State<PgPool>,
     user: AuthUser,
@@ -184,6 +198,7 @@ pub async fn editar(
     let edicion = EdicionRequerimiento {
         fecha_fin: body.fecha_fin,
         estado: body.estado.as_deref(),
+        cantidad: None,
         version: body.version,
         glosa: &body.glosa,
         categoria_desvio: body.categoria_desvio.as_deref(),
@@ -193,16 +208,7 @@ pub async fn editar(
     let mut tx = tx_usuario(&pool, &user).await?;
     let a = db::aprobaciones::actualizar(&mut tx, id.into(), edicion)
         .await
-        .map_err(|e| match e {
-            ActualizarError::NoEncontrado => ApiError::NotFound,
-            ActualizarError::SinPermiso => ApiError::Forbidden,
-            ActualizarError::Conflicto => ApiError::Conflict(
-                "el requerimiento cambió; volver a cargarlo antes de guardar".into(),
-            ),
-            ActualizarError::Validacion(e) => ApiError::Unprocessable(e.to_string()),
-            ActualizarError::Regla(m) => ApiError::Unprocessable(m),
-            ActualizarError::Db(e) => e.into(),
-        })?;
+        .map_err(error_edicion)?;
     tx.commit().await?;
 
     tracing::info!(

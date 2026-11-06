@@ -15,6 +15,7 @@ import type {
   GuardarRol,
   GuardarUsuario,
   CrearRequerimiento,
+  EditarCantidad,
   Me,
   NuevoValorParametro,
   OpcionesRequerimiento,
@@ -77,6 +78,22 @@ export function useRequerimiento(id: string | undefined) {
     queryKey: ['requerimientos', 'detalle', id] as const,
     queryFn: ({ signal }) => api.get<RequerimientoDetalle>(`/requerimientos/${encodeURIComponent(id!)}`, undefined, signal),
     enabled: !!id,
+  })
+}
+
+/** Cambia la cantidad actual; queda en requerimiento_historial con su glosa. */
+export function useEditarCantidad() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: EditarCantidad) =>
+      api.patch<RequerimientoDetalle>(`/requerimientos/${encodeURIComponent(id)}`, body),
+    onSuccess: (d) => {
+      qc.setQueryData(['requerimientos', 'detalle', d.id], d)
+      void qc.invalidateQueries({ queryKey: queryKeys.historial(d.id) })
+      void qc.invalidateQueries({ queryKey: queryKeys.requerimientosTodos, exact: false, predicate: (q) => q.queryKey[1] !== 'detalle' })
+      void qc.invalidateQueries({ queryKey: queryKeys.aprobaciones })
+      void qc.invalidateQueries({ queryKey: queryKeys.almanaqueTodos })
+    },
   })
 }
 

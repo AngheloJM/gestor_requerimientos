@@ -180,8 +180,17 @@ A confirmar / TODO(negocio):
       "Mis requerimientos". Muestra solicitante, tipo, asignación administrativa (datos
       **actuales** del servicio), fecha de operación, sueldo y bonos **congelados al crear** y comentarios.
       Visibilidad por RLS; servicios inactivos no se muestran (igual que el listado).
-- [ ] TODO(negocio): en Lovable, cantidad y motivo aparecen como campos editables en el detalle;
-      acá son de solo lectura hasta definir quién puede editarlos y en qué estado.
+- [x] **Cantidad requerida editable** en el detalle ("Entregas parciales"): pasa por
+      `editar_requerimiento_con_historial` (glosa obligatoria; desvío = categoría + explicación,
+      opcional). Cambia `cantidad_personas` (actual); la original (`requerimiento_referencia`)
+      no se toca; queda en `requerimiento_historial`. La base exige ≥ 1 y ≥ lo ya aceptado, y
+      decide quién puede editar (`p2_acceso`).
+- [ ] A confirmar: "Reclutados informados" = suma de todas las entregas registradas (entregas y
+      rectificaciones, con o sin decisión).
+- [ ] TODO(negocio): edición del motivo en el detalle (la base lo permite solo en pendiente).
+- [ ] Tiempos de capacitación congelados: la base congela solo `tiempo_capacitacion_snap` (del
+      servicio). Congelar los tres tiempos por cargo requiere columnas nuevas en `requerimientos`
+      y un trigger nuevo en producción (pendiente de confirmación).
 
 - [x] Datos del solicitante y panel fijo "Datos del servicio" (centro de costo, cliente, contrato,
       tipo de contrato, modalidad, días, sueldo básico y bonos fijos), cada dato con

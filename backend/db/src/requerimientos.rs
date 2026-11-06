@@ -250,6 +250,15 @@ SELECT
     r.haber_basico_nocturno_snap::numeric AS haber_basico_nocturno,
     r.bonos_snap AS bonos, r.tiempo_capacitacion_snap::int4 AS tiempo_capacitacion_dias,
     r.created_at::timestamptz AS creado,
+    r.updated_at::timestamptz AS version,
+    (SELECT rr.cantidad_original::int4 FROM requerimiento_referencia rr
+      WHERE rr.requerimiento_id = r.id AND rr.origen = 'creacion'
+      ORDER BY rr.created_at LIMIT 1) AS cantidad_original,
+    (SELECT coalesce(sum(e.cantidad), 0)::int8 FROM requerimiento_entregas e
+      JOIN requerimiento_entrega_decisiones d ON d.entrega_id = e.id AND d.estado = 'aceptada'
+      WHERE e.requerimiento_id = r.id) AS total_aceptado,
+    (SELECT coalesce(sum(e.cantidad), 0)::int8 FROM requerimiento_entregas e
+      WHERE e.requerimiento_id = r.id) AS reclutados_informados,
     u.nombre::text AS solicitante_nombre, uc.nombre::text AS solicitante_cargo,
     u.division::text AS solicitante_division, u.region::text AS solicitante_region,
     sup.nombre::text AS inmediato_superior,
@@ -293,6 +302,15 @@ pub struct DetalleRequerimiento {
     pub bonos: Option<serde_json::Value>,
     pub tiempo_capacitacion_dias: Option<i32>,
     pub creado: DateTime<Utc>,
+    /// `updated_at` con microsegundos: devolverlo tal cual al editar (concurrencia).
+    pub version: DateTime<Utc>,
+    /// Con cuánto arrancó (`requerimiento_referencia`, origen `creacion`); nunca se edita.
+    pub cantidad_original: Option<i32>,
+    /// Suma de entregas con decisión `aceptada` (mismo cálculo que usa la base al validar).
+    pub total_aceptado: i64,
+    /// A confirmar: suma de todas las entregas registradas (entregas y rectificaciones,
+    /// con o sin decisión).
+    pub reclutados_informados: i64,
     pub solicitante_nombre: Option<String>,
     pub solicitante_cargo: Option<String>,
     pub solicitante_division: Option<String>,

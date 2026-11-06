@@ -5,6 +5,8 @@ import { Link, useParams } from 'react-router-dom'
 import { type BonoCongelado, useRequerimiento } from '@/api'
 import { EstadoRequerimiento, etiquetaTipo } from '@/components/EstadoRequerimiento'
 import { ErrorApi } from '@/components/ErrorApi'
+import { EntregasParciales } from '@/components/requerimiento/EntregasParciales'
+import { HistorialCambios } from '@/components/requerimiento/HistorialCambios'
 import { PanelSolicitante } from '@/components/requerimiento/PanelSolicitante'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFecha, formatMonto } from '@/lib/format'
@@ -99,7 +101,11 @@ export function RequerimientoDetallePage() {
                 </Grilla>
               </Seccion>
 
-              <Seccion titulo="2. Servicio y cargo">
+              <Seccion titulo="2. Entregas parciales">
+                <EntregasParciales r={r} />
+              </Seccion>
+
+              <Seccion titulo="3. Servicio y cargo">
                 <Grilla>
                   <Dato etiqueta="Servicio">{r.servicio_nombre ?? 'Sin servicio (staff)'}</Dato>
                   <Dato etiqueta="Código de servicio">{vacio(r.servicio_codigo)}</Dato>
@@ -108,13 +114,13 @@ export function RequerimientoDetallePage() {
                 </Grilla>
               </Seccion>
 
-              <Seccion titulo="3. Fecha">
+              <Seccion titulo="4. Fecha">
                 <Grilla>
                   <Dato etiqueta="Fecha de inicio de operación">{formatFecha(r.fecha_inicio_operacion)}</Dato>
                 </Grilla>
               </Seccion>
 
-              <Seccion titulo="4. Sueldo y bonos congelados al crear">
+              <Seccion titulo="5. Sueldo y bonos congelados al crear">
                 <div className="grid gap-5">
                   <Grilla>
                     <Dato etiqueta="Haber básico diurno">{bs(r.haber_basico_diurno)}</Dato>
@@ -127,8 +133,12 @@ export function RequerimientoDetallePage() {
                 </div>
               </Seccion>
 
-              <Seccion titulo="5. Comentarios adicionales">
+              <Seccion titulo="6. Comentarios adicionales">
                 <p className="text-sm whitespace-pre-wrap text-nova-titulo">{r.comentarios ?? <span className="text-nova-gris">Sin comentarios.</span>}</p>
+              </Seccion>
+
+              <Seccion titulo="7. Historial de cambios">
+                <HistorialCambios id={r.id} />
               </Seccion>
             </div>
 

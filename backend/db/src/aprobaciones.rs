@@ -241,6 +241,9 @@ pub struct EdicionRequerimiento<'a> {
     pub fecha_fin: Option<Option<NaiveDate>>,
     /// Nuevo `estado` (aprobar / rechazar…). Solo RR.HH. (lo valida la base).
     pub estado: Option<&'a str>,
+    /// Nueva **cantidad actual** (`cantidad_personas`). La original queda intacta en
+    /// `requerimiento_referencia`. La base exige ≥ 1 y ≥ lo ya aceptado en entregas.
+    pub cantidad: Option<i32>,
     /// `updated_at` que el cliente leyó (`Aprobacion::version`).
     pub version: DateTime<Utc>,
     /// Obligatoria (3–2000 caracteres; lo valida la base).
@@ -255,13 +258,17 @@ const QUERY_EDITAR: &str = r#"
 SELECT public.editar_requerimiento_con_historial(
     $1,
     CASE WHEN $2 THEN jsonb_build_object('fecha_fin', $3::text) ELSE '{}'::jsonb END
-    || CASE WHEN $4::text IS NOT NULL THEN jsonb_build_object('estado', $4::text) ELSE '{}'::jsonb END,
+    || CASE WHEN $4::text IS NOT NULL THEN jsonb_build_object('estado', $4::text) ELSE '{}'::jsonb END
+    || CASE WHEN $9::int4 IS NOT NULL THEN jsonb_build_object('cantidad_personas', $9::int4) ELSE '{}'::jsonb END,
     $5, $6, $7, $8)
 "#;
 
 /// Aplica la edición dentro de la transacción del request (el llamador hace commit). Los
 /// campos que no cambian se omiten; si ninguno cambia no se escribe nada (la base rechazaría
 /// "No hay cambios para guardar").
+/// (fecha_inicio, fecha_fin, estado, cantidad_personas) actuales del requerimiento.
+type EstadoActual = (NaiveDate, Option<NaiveDate>, Option<String>, Option<i32>);
+
 pub async fn actualizar(
     conn: &mut PgConnection,
     id: RequerimientoId,
@@ -269,13 +276,14 @@ pub async fn actualizar(
 ) -> Result<Aprobacion, ActualizarError> {
     let uid = Uuid::from(id);
 
-    let visible: Option<(NaiveDate, Option<NaiveDate>, Option<String>)> = sqlx::query_as(
-        "SELECT fecha_inicio::date, fecha_fin::date, estado::text FROM requerimientos WHERE id = $1",
+    let visible: Option<EstadoActual> = sqlx::query_as(
+        "SELECT fecha_inicio::date, fecha_fin::date, estado::text, cantidad_personas::int4
+         FROM requerimientos WHERE id = $1",
     )
     .bind(uid)
     .fetch_optional(&mut *conn)
     .await?;
-    let Some((fecha_inicio, fin_actual, estado_actual)) = visible else {
+    let Some((fecha_inicio, fin_actual, estado_actual, cantidad_actual)) = visible else {
         return Err(ActualizarError::NoEncontrado);
     };
 
@@ -284,8 +292,9 @@ pub async fn actualizar(
     }
     let fecha_fin = e.fecha_fin.filter(|f| *f != fin_actual);
     let estado = e.estado.filter(|s| Some(*s) != estado_actual.as_deref());
+    let cantidad = e.cantidad.filter(|c| Some(*c) != cantidad_actual);
 
-    if fecha_fin.is_some() || estado.is_some() {
+    if fecha_fin.is_some() || estado.is_some() || cantidad.is_some() {
         sqlx::query(QUERY_EDITAR)
             .bind(uid)
             .bind(fecha_fin.is_some())
@@ -299,6 +308,7 @@ pub async fn actualizar(
             .bind(e.glosa)
             .bind(e.categoria_desvio)
             .bind(e.detalle_desvio)
+            .bind(cantidad)
             .execute(&mut *conn)
             .await?;
     }

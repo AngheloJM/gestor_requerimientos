@@ -1,7 +1,9 @@
 //! GET  /requerimientos[?mios=true] — "Mis requerimientos".
 //! GET  /requerimientos/opciones   — servicios/cargos elegibles y catálogos del formulario.
 //! POST /requerimientos            — crea vía `crear_requerimiento_con_snapshot` → 201 {folio}.
-//! GET  /requerimientos/{id}       — detalle de solo lectura (404 si no existe o RLS no lo deja ver).
+//! GET  /requerimientos/{id}       — detalle (404 si no existe o RLS no lo deja ver).
+//! PATCH /requerimientos/{id}      — cambia la **cantidad actual** vía `editar_requerimiento_con_historial`
+//!                                    (glosa obligatoria; queda en requerimiento_historial).
 //!
 //! Devuelve lo que RLS permite ver (RR.HH.: todos). Con `mios=true`, solo los que pidió el
 //! usuario. Cada fila indica `es_mio` y su `estado`, para que el solicitante vea si fue
@@ -230,4 +232,48 @@ pub async fn detalle(
         .await?
         .map(Json)
         .ok_or(ApiError::NotFound)
+}
+
+/// Cambio de cantidad requerida. `version` es el `version` del detalle; `glosa` obligatoria
+/// (3–2000); categoría y detalle del desvío van juntos o ninguno (lo valida la base).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PatchCantidad {
+    pub cantidad: i32,
+    pub version: chrono::DateTime<chrono::Utc>,
+    pub glosa: String,
+    pub categoria_desvio: Option<String>,
+    pub detalle_desvio: Option<String>,
+}
+
+pub async fn editar_cantidad(
+    State(pool): State<PgPool>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(b): Json<PatchCantidad>,
+) -> ApiResult<Json<db::requerimientos::DetalleRequerimiento>> {
+    if b.cantidad < 1 {
+        return Err(ApiError::Unprocessable(
+            "la cantidad debe ser al menos 1".into(),
+        ));
+    }
+    let edicion = db::aprobaciones::EdicionRequerimiento {
+        fecha_fin: None,
+        estado: None,
+        cantidad: Some(b.cantidad),
+        version: b.version,
+        glosa: &b.glosa,
+        categoria_desvio: b.categoria_desvio.as_deref().filter(|c| !c.is_empty()),
+        detalle_desvio: b.detalle_desvio.as_deref().filter(|d| !d.trim().is_empty()),
+    };
+    let mut tx = tx_usuario(&pool, &user).await?;
+    db::aprobaciones::actualizar(&mut tx, id.into(), edicion)
+        .await
+        .map_err(crate::aprobaciones::error_edicion)?;
+    let d = db::requerimientos::detalle(&mut tx, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    tx.commit().await?;
+    tracing::info!(requerimiento_id = %id, usuario_id = %user.user_id, cantidad = b.cantidad, "cantidad requerida editada");
+    Ok(Json(d))
 }

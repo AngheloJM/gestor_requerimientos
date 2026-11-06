@@ -281,17 +281,26 @@ async fn reglas_de_creacion_de_la_base(pool: db::PgPool) {
 }
 
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
-#[sqlx::test(migrations = false, fixtures("supabase_subset", "rls_test", "datos"))]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion")
+)]
 async fn detalle_respeta_rls_y_servicio_activo(pool: db::PgPool) {
-    preparar(&pool).await;
+    // Preparación como superusuario y sin triggers (los de producción protegen los snapshots).
+    let mut prep = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role = replica")
+        .execute(&mut *prep)
+        .await
+        .unwrap();
     sqlx::query(
         "UPDATE requerimientos SET bonos_snap = '[{\"metrica\":\"Calidad\",\"monto\":150}]',
          haber_basico_diurno_snap = 3000 WHERE id = $1",
     )
     .bind(uid(REQ_81))
-    .execute(&pool)
+    .execute(&mut *prep)
     .await
     .unwrap();
+    prep.commit().await.unwrap();
     let detalle = |usuario: &'static str, req: &'static str| {
         let pool = pool.clone();
         async move {
