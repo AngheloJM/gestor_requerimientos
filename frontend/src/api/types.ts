@@ -70,6 +70,9 @@ export interface FilaMatriz {
   servicio_cargo_id: Uuid
   haber_basico_diurno: Monto
   haber_basico_nocturno: Monto | null
+  /** A confirmar: cantidades por cargo del servicio. */
+  cantidad_mujeres: number | null
+  cantidad_hombres: number | null
   total_haberes: Monto
   /** Haberes + suma de monto_bono configurados (sin ajustar por cumplimiento real). */
   total_ganado: Monto

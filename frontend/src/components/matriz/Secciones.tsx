@@ -9,6 +9,7 @@ import {
   useConfigLista,
 } from '@/api'
 import { EstadoBadge } from '@/components/EstadoBadge'
+import { CargosServicio } from '@/components/matriz/CargosServicio'
 import { CrudSeccion, numeroONulo, texto, textoONulo, type Valores } from '@/components/matriz/CrudSeccion'
 import { DEPARTAMENTOS } from '@/lib/catalogos'
 import { formatFecha } from '@/lib/format'
@@ -17,6 +18,7 @@ type Permisos = { esRrhh: boolean }
 const todo = (esRrhh: boolean) => ({ crear: esRrhh, editar: esRrhh, eliminar: esRrhh })
 const vacio = (v: string | null | undefined) => v || '—'
 const NUMERO_ENTERO = /^\d+$/
+const opcionesDias = (): [string, string][] => Array.from({ length: 30 }, (_, i) => [String(i + 1), `${i + 1} día${i ? 's' : ''}`])
 
 /**
  * Proyecto se oculta del front (revisión 04/11/2026): todavía no se usa. La tabla `proyectos`,
@@ -134,7 +136,7 @@ export function Servicios({ esRrhh }: Permisos) {
       cargando={q.isPending}
       error={q.error}
       permisos={todo(esRrhh)}
-      nota="Un servicio con cargos o requerimientos no se puede eliminar (la base lo impide): desactivalo con el interruptor “Activo”."
+      nota="Para agregar cargos (composición salarial y métricas), editá el servicio. Un servicio con cargos o requerimientos no se puede eliminar (la base lo impide): desactivalo con el interruptor “Activo”."
       idDe={(s) => s.id}
       nombreDe={(s) => s.nombre}
       columnas={[
@@ -145,7 +147,12 @@ export function Servicios({ esRrhh }: Permisos) {
         { titulo: 'Contrato', valor: (s) => vacio(s.contrato_nombre), clase: 'whitespace-nowrap' },
         { titulo: 'Modalidad', valor: (s) => s.modalidad, clase: 'whitespace-nowrap' },
         { titulo: 'Días', valor: (s) => s.dias_trabajo.map((d) => d.slice(0, 3)).join(', ') || '—', clase: 'whitespace-nowrap' },
-        { titulo: 'Capacitación', valor: (s) => (s.tiempo_capacitacion_dias != null ? `${s.tiempo_capacitacion_dias} d` : '—') },
+        {
+          titulo: 'Capacitación / OJT / ajustada',
+          valor: (s) =>
+            [s.tiempo_capacitacion_dias, s.tiempo_ojt_dias, s.tiempo_capacitacion_ajustada_dias].map((d) => (d != null ? `${d} d` : '—')).join(' · '),
+          clase: 'whitespace-nowrap',
+        },
         {
           titulo: 'Estado',
           valor: (s) => (s.activo ? <EstadoBadge tono="exito">Activo</EstadoBadge> : <EstadoBadge tono="error">Inactivo</EstadoBadge>),
@@ -196,12 +203,16 @@ export function Servicios({ esRrhh }: Permisos) {
           opciones: () => pares([...DEPARTAMENTOS]),
         },
         { nombre: 'manual_funciones_codigo', etiqueta: 'Código de manual de funciones', tipo: 'texto' },
+        // Tres tiempos (revisión 04/11/2026). TODO(negocio): cuál define la fecha de inicio de
+        // capacitación del requerimiento; hoy la base usa "Tiempo de capacitación".
+        { nombre: 'tiempo_capacitacion_dias', etiqueta: 'Tiempo de capacitación (días)', tipo: 'select', otro: true, opciones: opcionesDias },
+        { nombre: 'tiempo_ojt_dias', etiqueta: 'Tiempo de OJT (días)', tipo: 'select', otro: true, opciones: opcionesDias },
         {
-          nombre: 'tiempo_capacitacion_dias',
-          etiqueta: 'Tiempo de capacitación (días)',
+          nombre: 'tiempo_capacitacion_ajustada_dias',
+          etiqueta: 'Tiempo de capacitación ajustada (días)',
           tipo: 'select',
           otro: true,
-          opciones: () => Array.from({ length: 30 }, (_, i) => [String(i + 1), `${i + 1} día${i ? 's' : ''}`]),
+          opciones: opcionesDias,
         },
         { nombre: 'capacitacion_pagada', etiqueta: 'Capacitación pagada', tipo: 'switch' },
         { nombre: 'tiene_refrigerio', etiqueta: 'Tiene refrigerio', tipo: 'switch' },
@@ -222,14 +233,24 @@ export function Servicios({ esRrhh }: Permisos) {
         departamento_region: s?.departamento_region ?? '',
         manual_funciones_codigo: s?.manual_funciones_codigo ?? '',
         tiempo_capacitacion_dias: s?.tiempo_capacitacion_dias?.toString() ?? '',
+        tiempo_ojt_dias: s?.tiempo_ojt_dias?.toString() ?? '',
+        tiempo_capacitacion_ajustada_dias: s?.tiempo_capacitacion_ajustada_dias?.toString() ?? '',
         capacitacion_pagada: s?.capacitacion_pagada ?? false,
         tiene_refrigerio: s?.tiene_refrigerio ?? false,
         activo: s?.activo ?? true,
       })}
       validar={(v) => {
-        const t = texto(v, 'tiempo_capacitacion_dias')
-        return t && !NUMERO_ENTERO.test(t) ? 'El tiempo de capacitación debe ser un número entero de días.' : undefined
+        for (const [k, nombre] of [
+          ['tiempo_capacitacion_dias', 'de capacitación'],
+          ['tiempo_ojt_dias', 'de OJT'],
+          ['tiempo_capacitacion_ajustada_dias', 'de capacitación ajustada'],
+        ]) {
+          const t = texto(v, k)
+          if (t && !NUMERO_ENTERO.test(t)) return `El tiempo ${nombre} debe ser un número entero de días.`
+        }
+        return undefined
       }}
+      extraEdicion={(s) => <CargosServicio servicioId={s.id} esRrhh={esRrhh} />}
       aBody={(v: Valores) => ({
         codigo: textoONulo(v, 'codigo'),
         nombre: texto(v, 'nombre'),
@@ -244,6 +265,8 @@ export function Servicios({ esRrhh }: Permisos) {
         departamento_region: textoONulo(v, 'departamento_region'),
         manual_funciones_codigo: textoONulo(v, 'manual_funciones_codigo'),
         tiempo_capacitacion_dias: numeroONulo(v, 'tiempo_capacitacion_dias'),
+        tiempo_ojt_dias: numeroONulo(v, 'tiempo_ojt_dias'),
+        tiempo_capacitacion_ajustada_dias: numeroONulo(v, 'tiempo_capacitacion_ajustada_dias'),
         capacitacion_pagada: v.capacitacion_pagada,
         tiene_refrigerio: v.tiene_refrigerio,
         activo: v.activo,
@@ -312,6 +335,14 @@ export function Contratos({ esRrhh }: Permisos) {
             k.fecha_fin ? `hasta ${formatFecha(k.fecha_fin)}` : k.duracion_valor ? `${k.duracion_valor} ${k.duracion_unidad === 'dias' ? 'días' : (k.duracion_unidad ?? '')}` : '—',
           clase: 'whitespace-nowrap',
         },
+        {
+          titulo: 'Renovación',
+          valor: (k) =>
+            k.tiempo_renovacion_valor
+              ? `${k.tiempo_renovacion_valor} ${k.tiempo_renovacion_unidad === 'dias' ? 'días' : (k.tiempo_renovacion_unidad ?? '')} antes`
+              : '—',
+          clase: 'whitespace-nowrap',
+        },
       ]}
       campos={[
         { nombre: 'codigo', etiqueta: 'Código', tipo: 'texto', requerido: true },
@@ -330,6 +361,21 @@ export function Contratos({ esRrhh }: Permisos) {
             ['dias', 'Días'],
           ],
         },
+        {
+          nombre: 'tiempo_renovacion_valor',
+          etiqueta: 'Tiempo de renovación',
+          tipo: 'numero',
+          ayuda: 'Opcional. Cuánto antes del vencimiento empezar a renegociar.',
+        },
+        {
+          nombre: 'tiempo_renovacion_unidad',
+          etiqueta: 'Unidad de renovación',
+          tipo: 'select',
+          opciones: () => [
+            ['meses', 'Meses'],
+            ['dias', 'Días'],
+          ],
+        },
       ]}
       inicial={(k) => ({
         codigo: k?.codigo ?? '',
@@ -339,6 +385,8 @@ export function Contratos({ esRrhh }: Permisos) {
         fecha_fin: k?.fecha_fin ?? '',
         duracion_valor: k?.duracion_valor?.toString() ?? '',
         duracion_unidad: k?.duracion_unidad ?? '',
+        tiempo_renovacion_valor: k?.tiempo_renovacion_valor?.toString() ?? '',
+        tiempo_renovacion_unidad: k?.tiempo_renovacion_unidad ?? '',
       })}
       validar={(v) => {
         if (conFin(v) && conDuracion(v)) return 'Elegí fecha de fin o duración, no ambas.'
@@ -346,6 +394,12 @@ export function Contratos({ esRrhh }: Permisos) {
           if (!NUMERO_ENTERO.test(texto(v, 'duracion_valor')) || Number(texto(v, 'duracion_valor')) <= 0)
             return 'Indicá la fecha de fin o una duración (número entero positivo).'
           if (!texto(v, 'duracion_unidad')) return 'Elegí la unidad de duración.'
+        }
+        const rv = texto(v, 'tiempo_renovacion_valor')
+        const ru = texto(v, 'tiempo_renovacion_unidad')
+        if (rv || ru) {
+          if (!NUMERO_ENTERO.test(rv) || Number(rv) <= 0) return 'Tiempo de renovación: número entero positivo (o dejalo vacío).'
+          if (!ru) return 'Elegí la unidad del tiempo de renovación.'
         }
         return undefined
       }}
@@ -357,6 +411,8 @@ export function Contratos({ esRrhh }: Permisos) {
         fecha_fin: textoONulo(v, 'fecha_fin'),
         duracion_valor: numeroONulo(v, 'duracion_valor'),
         duracion_unidad: textoONulo(v, 'duracion_unidad'),
+        tiempo_renovacion_valor: numeroONulo(v, 'tiempo_renovacion_valor'),
+        tiempo_renovacion_unidad: textoONulo(v, 'tiempo_renovacion_unidad'),
       })}
     />
   )

@@ -252,6 +252,7 @@ export function CrudSeccion<T>({
   nombreDe,
   permisos,
   nota,
+  extraEdicion,
 }: {
   titulo: string
   /** Título del formulario de alta (por defecto "Nuevo · {titulo}"). */
@@ -270,6 +271,8 @@ export function CrudSeccion<T>({
   nombreDe: (t: T) => string
   permisos: { crear: boolean; editar: boolean; eliminar: boolean }
   nota?: ReactNode
+  /** Contenido adicional bajo el formulario al editar un registro existente. */
+  extraEdicion?: (t: T) => ReactNode
 }) {
   const guardar = useConfigGuardar(recurso)
   const eliminar = useConfigEliminar(recurso)
@@ -330,6 +333,7 @@ export function CrudSeccion<T>({
           }
         />
       )}
+      {editando && editando !== 'nuevo' && extraEdicion?.(editando)}
       {eliminar.error ? <ErrorApi error={eliminar.error} /> : null}
       {error ? (
         <ErrorApi error={error} />

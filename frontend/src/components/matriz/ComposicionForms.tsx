@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 const MONTO = /^\d{1,9}(\.\d{1,2})?$/
 const entrada = 'h-9 rounded-lg border border-input bg-white px-2.5 text-sm tabular-nums'
 
+const ENTERO = /^\d{1,6}$/
+
 /** Valida haberes: diurno obligatorio, nocturno opcional; ambos montos no negativos (2 decimales). */
 function haberes(diurno: string, nocturno: string): string | undefined {
   if (!MONTO.test(diurno.trim())) return 'Haber básico diurno: monto con hasta 2 decimales.'
@@ -14,20 +16,74 @@ function haberes(diurno: string, nocturno: string): string | undefined {
   return undefined
 }
 
-/** Alta de una fila de servicio_cargos (servicio + cargo + haberes). */
-export function NuevaComposicion({ cerrar }: { cerrar: () => void }) {
+/** Cantidades opcionales (enteros ≥ 0). */
+function cantidades(mujeres: string, hombres: string): string | undefined {
+  if (mujeres.trim() && !ENTERO.test(mujeres.trim())) return 'Cantidad de mujeres: número entero.'
+  if (hombres.trim() && !ENTERO.test(hombres.trim())) return 'Cantidad de hombres: número entero.'
+  return undefined
+}
+const entero = (v: string) => (v.trim() ? Number(v.trim()) : null)
+
+function CamposCantidades({
+  mujeres,
+  hombres,
+  setMujeres,
+  setHombres,
+  ancho = '',
+}: {
+  mujeres: string
+  hombres: string
+  setMujeres: (v: string) => void
+  setHombres: (v: string) => void
+  ancho?: string
+}) {
+  return (
+    <>
+      <label className="grid gap-1 text-xs text-nova-gris">
+        Cantidad de mujeres
+        <input className={`${entrada} ${ancho}`} inputMode="numeric" value={mujeres} onChange={(e) => setMujeres(e.target.value)} />
+      </label>
+      <label className="grid gap-1 text-xs text-nova-gris">
+        Cantidad de hombres
+        <input className={`${entrada} ${ancho}`} inputMode="numeric" value={hombres} onChange={(e) => setHombres(e.target.value)} />
+      </label>
+    </>
+  )
+}
+
+/**
+ * Alta de una fila de servicio_cargos (servicio + cargo + haberes + cantidades).
+ * Con `servicioId`, el servicio queda fijo (formulario dentro del Servicio).
+ */
+export function NuevaComposicion({
+  cerrar,
+  servicioId,
+  excluirCargos = [],
+  onCreada,
+}: {
+  cerrar: () => void
+  servicioId?: string
+  excluirCargos?: string[]
+  onCreada?: (servicioCargoId: string) => void
+}) {
   const servicios = useConfigLista<ServicioCfg>('servicios')
   const cargos = useConfigLista<CargoCfg>('cargos')
   const guardar = useGuardarComposicion()
-  const [servicio, setServicio] = useState('')
+  const [servicio, setServicio] = useState(servicioId ?? '')
   const [cargo, setCargo] = useState('')
   const [diurno, setDiurno] = useState('')
   const [nocturno, setNocturno] = useState('')
+  const [mujeres, setMujeres] = useState('')
+  const [hombres, setHombres] = useState('')
   const [aviso, setAviso] = useState<string>()
 
   const enviar = (e: React.FormEvent) => {
     e.preventDefault()
-    const msg = !servicio ? 'Elegí el servicio.' : !cargo ? 'Elegí el cargo.' : haberes(diurno, nocturno)
+    const msg = !servicio
+      ? 'Seleccione el servicio.'
+      : !cargo
+        ? 'Seleccione el cargo.'
+        : (haberes(diurno, nocturno) ?? cantidades(mujeres, hombres))
     setAviso(msg)
     if (msg) return
     guardar.mutate(
@@ -37,34 +93,43 @@ export function NuevaComposicion({ cerrar }: { cerrar: () => void }) {
           cargo_id: cargo,
           haber_basico_diurno: diurno.trim(),
           haber_basico_nocturno: nocturno.trim() || null,
+          cantidad_mujeres: entero(mujeres),
+          cantidad_hombres: entero(hombres),
         },
       },
-      { onSuccess: cerrar },
+      {
+        onSuccess: (r) => {
+          cerrar()
+          onCreada?.(r.id)
+        },
+      },
     )
   }
 
   return (
-    <form onSubmit={enviar} className="grid gap-3 rounded-xl border border-nova-azul/30 bg-card p-4 shadow-nova-md" aria-label="Nueva composición">
-      <p className="font-semibold text-nova-titulo">Nueva composición</p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="grid gap-1 text-xs text-nova-gris">
-          Servicio *
-          <select className={entrada} value={servicio} onChange={(e) => setServicio(e.target.value)}>
-            <option value="">Elegí…</option>
-            {(servicios.data ?? [])
-              .filter((s) => s.activo)
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.codigo ? `${s.codigo} · ${s.nombre}` : s.nombre}
-                </option>
-              ))}
-          </select>
-        </label>
+    <form onSubmit={enviar} className="grid gap-3 rounded-xl border border-nova-azul/30 bg-card p-4 shadow-nova-md" aria-label="Agregar cargo">
+      <p className="font-semibold text-nova-titulo">{servicioId ? 'Agregar cargo al servicio' : 'Nueva composición'}</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {!servicioId && (
+          <label className="grid gap-1 text-xs text-nova-gris">
+            Servicio *
+            <select className={entrada} value={servicio} onChange={(e) => setServicio(e.target.value)}>
+              <option value="">Seleccione una opción</option>
+              {(servicios.data ?? [])
+                .filter((s) => s.activo)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.codigo ? `${s.codigo} · ${s.nombre}` : s.nombre}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
         <label className="grid gap-1 text-xs text-nova-gris">
           Cargo *
           <select className={entrada} value={cargo} onChange={(e) => setCargo(e.target.value)}>
-            <option value="">Elegí…</option>
-            {(cargos.data ?? []).map((c) => (
+            <option value="">Seleccione una opción</option>
+            {(cargos.data ?? []).filter((c) => !excluirCargos.includes(c.id)).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre}
               </option>
@@ -79,7 +144,9 @@ export function NuevaComposicion({ cerrar }: { cerrar: () => void }) {
           Haber básico nocturno (Bs)
           <input className={entrada} inputMode="decimal" value={nocturno} onChange={(e) => setNocturno(e.target.value)} />
         </label>
+        <CamposCantidades mujeres={mujeres} hombres={hombres} setMujeres={setMujeres} setHombres={setHombres} />
       </div>
+      {servicioId && <p className="text-xs text-nova-gris">Después de guardar se abren las métricas y bonos de este cargo.</p>}
       {aviso && (
         <p className="text-sm text-error" role="alert">
           {aviso}
@@ -91,7 +158,7 @@ export function NuevaComposicion({ cerrar }: { cerrar: () => void }) {
           Cancelar
         </Button>
         <Button type="submit" disabled={guardar.isPending}>
-          Crear composición
+          {servicioId ? 'Agregar cargo' : 'Crear composición'}
         </Button>
       </div>
     </form>
@@ -103,15 +170,25 @@ export function EditarHaberes({ fila, cerrar }: { fila: FilaMatriz; cerrar: () =
   const guardar = useGuardarComposicion()
   const [diurno, setDiurno] = useState(fila.haber_basico_diurno)
   const [nocturno, setNocturno] = useState(fila.haber_basico_nocturno ?? '')
+  const [mujeres, setMujeres] = useState(fila.cantidad_mujeres?.toString() ?? '')
+  const [hombres, setHombres] = useState(fila.cantidad_hombres?.toString() ?? '')
   const [aviso, setAviso] = useState<string>()
 
   const enviar = (e: React.FormEvent) => {
     e.preventDefault()
-    const msg = haberes(diurno, nocturno)
+    const msg = haberes(diurno, nocturno) ?? cantidades(mujeres, hombres)
     setAviso(msg)
     if (msg) return
     guardar.mutate(
-      { id: fila.servicio_cargo_id, body: { haber_basico_diurno: diurno.trim(), haber_basico_nocturno: nocturno.trim() || null } },
+      {
+        id: fila.servicio_cargo_id,
+        body: {
+          haber_basico_diurno: diurno.trim(),
+          haber_basico_nocturno: nocturno.trim() || null,
+          cantidad_mujeres: entero(mujeres),
+          cantidad_hombres: entero(hombres),
+        },
+      },
       { onSuccess: cerrar },
     )
   }
@@ -126,11 +203,12 @@ export function EditarHaberes({ fila, cerrar }: { fila: FilaMatriz; cerrar: () =
         Haber básico nocturno (Bs)
         <input className={`${entrada} w-40`} inputMode="decimal" value={nocturno} onChange={(e) => setNocturno(e.target.value)} />
       </label>
+      <CamposCantidades mujeres={mujeres} hombres={hombres} setMujeres={setMujeres} setHombres={setHombres} ancho="w-32" />
       <Button type="button" variant="ghost" onClick={cerrar}>
         Cancelar
       </Button>
       <Button type="submit" disabled={guardar.isPending}>
-        Guardar haberes
+        Guardar
       </Button>
       {aviso && (
         <p className="w-full text-sm text-error" role="alert">

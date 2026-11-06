@@ -57,6 +57,8 @@ export interface ServicioCfg {
   departamento_region: string | null
   manual_funciones_codigo: string | null
   tiempo_capacitacion_dias: number | null
+  tiempo_ojt_dias: number | null
+  tiempo_capacitacion_ajustada_dias: number | null
   capacitacion_pagada: boolean | null
   tiene_refrigerio: boolean | null
   activo: boolean
@@ -78,6 +80,9 @@ export interface ContratoCfg {
   fecha_fin: FechaIso | null
   duracion_valor: number | null
   duracion_unidad: 'meses' | 'dias' | string | null
+  /** Opcional: cuánto antes del vencimiento empezar a renegociar. */
+  tiempo_renovacion_valor: number | null
+  tiempo_renovacion_unidad: 'meses' | 'dias' | string | null
 }
 
 export interface MetricaCatalogoCfg {
@@ -171,6 +176,52 @@ export function useGuardarComposicion() {
       id
         ? api.put<void>(`/config/composiciones/${encodeURIComponent(id)}`, body).then(() => ({ id }))
         : api.post<{ id: Uuid }>('/config/composiciones', body),
+    onSuccess: () => invalidarTodo(qc),
+  })
+}
+
+// --- Composición compartida (cargo en varios centros de costo) ------------------------------
+
+export interface MontoCentroCfg {
+  centro_costo_id: Uuid
+  centro_costo_nombre: string
+  monto: string
+  /** % sobre el total, 2 decimales. */
+  porcentaje: string
+}
+
+export interface ComposicionCompartida {
+  cargo_id: Uuid
+  cargo_nombre?: string
+  /** Centros de los servicios activos donde está el cargo. */
+  centros_posibles: { id: Uuid; nombre: string }[]
+  /** false: el cargo tiene un solo centro de costo posible (o ninguno): no se puede guardar. */
+  compartido: boolean
+  distribucion: MontoCentroCfg[]
+  total: string
+}
+
+export function useCompartidas() {
+  return useQuery({
+    queryKey: ['config', 'composicion-compartida'] as const,
+    queryFn: ({ signal }) => api.get<ComposicionCompartida[]>('/config/composicion-compartida', undefined, signal),
+  })
+}
+
+export function useCompartida(cargoId: string) {
+  return useQuery({
+    queryKey: ['config', 'composicion-compartida', cargoId] as const,
+    queryFn: ({ signal }) =>
+      api.get<ComposicionCompartida>(`/config/composicion-compartida/${encodeURIComponent(cargoId)}`, undefined, signal),
+    enabled: !!cargoId,
+  })
+}
+
+export function useGuardarCompartida() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ cargoId, centros }: { cargoId: string; centros: { centro_costo_id: Uuid; monto: string }[] }) =>
+      api.put<ComposicionCompartida>(`/config/composicion-compartida/${encodeURIComponent(cargoId)}`, { centros }),
     onSuccess: () => invalidarTodo(qc),
   })
 }

@@ -1,9 +1,10 @@
-import { Info, Pencil, Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { Info, Pencil, Search, SlidersHorizontal } from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { type FilaMatriz, useMatrizServicio, useParametros } from '@/api'
-import { EditarHaberes, NuevaComposicion } from '@/components/matriz/ComposicionForms'
+import { ComposicionCompartida } from '@/components/matriz/ComposicionCompartida'
+import { EditarHaberes } from '@/components/matriz/ComposicionForms'
 import { MetricasEditor } from '@/components/matriz/MetricasEditor'
 import { Button } from '@/components/ui/button'
 import { ErrorApi } from '@/components/ErrorApi'
@@ -76,7 +77,7 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
       (!cliente || (f.cliente?.id ?? '-') === cliente) &&
       (!servicio || f.servicio.id === servicio) &&
       (!q ||
-        [centroTexto(f), f.cliente?.nombre, f.proyecto?.nombre, servicioTexto(f), f.cargo.nombre].some((v) => v?.toLowerCase().includes(q)))
+        [centroTexto(f), f.cliente?.nombre, servicioTexto(f), f.cargo.nombre].some((v) => v?.toLowerCase().includes(q)))
     )
   })
   // Fila extendida bajo un registro: solicitar cambio, editar haberes o métricas.
@@ -85,7 +86,6 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
   const setSolicitando = (id: string | null) => setAbierto(id ? { id, modo: 'solicitar' } : null)
   const alternar = (id: string, modo: 'editar' | 'metricas') =>
     setAbierto(abierto?.id === id && abierto.modo === modo ? null : { id, modo })
-  const [nueva, setNueva] = useState(false)
   const [enviada, setEnviada] = useState<string | null>(null)
   const cargosDe = (servicioId: string) =>
     (data ?? []).filter((x) => x.servicio.id === servicioId).map((x) => ({ id: x.cargo.id, nombre: x.cargo.nombre }))
@@ -93,16 +93,15 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
 
   return (
     <div className="grid gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <ComposicionCompartida esRrhh={esRrhh} />
+
+      {/* A confirmar: se mantiene el resumen de lectura por servicio (filtros, Salario Mínimo
+          Nacional, total ganado y "Solicitar cambio"); el alta de cargos ahora es dentro del servicio. */}
+      <div className="flex flex-wrap items-end justify-between gap-4 border-t pt-5">
         <div>
-          <h3 className="text-lg font-semibold text-nova-titulo">Composición salarial</h3>
+          <h3 className="text-lg font-semibold text-nova-titulo">Resumen por servicio</h3>
           <p className="mt-1 text-sm text-nova-gris">Centro de costo → Cliente → Servicio → Cargo, con sueldos, bonos y total ganado.</p>
         </div>
-        {esRrhh && (
-          <Button onClick={() => setNueva(!nueva)} aria-expanded={nueva}>
-            <Plus aria-hidden /> Nueva composición
-          </Button>
-        )}
         {smn && (
           <p className="rounded-lg border bg-card px-3 py-2 text-sm shadow-nova-xs">
             <span className="text-nova-gris">Salario Mínimo Nacional vigente: </span>
@@ -110,8 +109,6 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
           </p>
         )}
       </div>
-
-      {nueva && <NuevaComposicion cerrar={() => setNueva(false)} />}
 
       <div className="grid gap-3 rounded-xl border bg-card p-4 shadow-nova-xs sm:grid-cols-2 lg:grid-cols-4">
         <Filtro id="f-centro" etiqueta="Centro de costo" valor={centro} opciones={opciones.centros} onChange={setCentro} />
@@ -121,7 +118,7 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
           Buscar
           <span className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" aria-hidden />
-            <Input className="h-9 bg-white pl-8 text-sm" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Centro, cliente, proyecto, servicio o cargo" />
+            <Input className="h-9 bg-white pl-8 text-sm" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Centro, cliente, servicio o cargo" />
           </span>
         </label>
       </div>
@@ -143,7 +140,7 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
           <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-10 bg-nova-hielo text-left text-xs tracking-wide text-nova-gris uppercase">
               <tr>
-                {['Centro de costo', 'Cliente', 'Servicio', 'Cargo', 'Proyecto'].map((h) => (
+                {['Centro de costo', 'Cliente', 'Servicio', 'Cargo'].map((h) => (
                   <th key={h} className="border-b px-3 py-2.5 font-medium whitespace-nowrap">
                     {h}
                   </th>
@@ -163,7 +160,6 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
                     <td className="border-b px-3 py-2 whitespace-nowrap">{f.cliente?.nombre ?? '—'}</td>
                     <td className="border-b px-3 py-2 whitespace-nowrap">{servicioTexto(f)}</td>
                     <td className="border-b px-3 py-2 font-medium whitespace-nowrap text-nova-titulo">{f.cargo.nombre}</td>
-                    <td className="border-b px-3 py-2 whitespace-nowrap text-nova-texto-2">{f.proyecto?.nombre ?? '—'}</td>
                     <td className="border-b px-3 py-2 text-right whitespace-nowrap tabular-nums">{bs(f.haber_basico_diurno)}</td>
                     <td className="border-b px-3 py-2 text-right whitespace-nowrap tabular-nums">{bs(f.haber_basico_nocturno)}</td>
                     <td className="border-b px-3 py-2">
@@ -221,7 +217,7 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
                   </tr>
                   {solicitando === f.servicio_cargo_id && (
                     <tr>
-                      <td colSpan={10} className="border-b bg-nova-hielo/30 px-3 py-2">
+                      <td colSpan={9} className="border-b bg-nova-hielo/30 px-3 py-2">
                         <p className="text-xs text-nova-gris">
                           Solicitar cambio · {servicioTexto(f)} · {f.cargo.nombre}
                         </p>
@@ -238,7 +234,7 @@ export function ComposicionSalarial({ esRrhh }: { esRrhh: boolean }) {
                   )}
                   {abierto?.id === f.servicio_cargo_id && abierto.modo !== 'solicitar' && (
                     <tr>
-                      <td colSpan={10} className="border-b bg-nova-hielo/30 px-3 py-3">
+                      <td colSpan={9} className="border-b bg-nova-hielo/30 px-3 py-3">
                         <p className="sticky left-3 mb-2 text-xs text-nova-gris">
                           {abierto.modo === 'editar' ? 'Editar haberes' : 'Métricas y bonos'} · {servicioTexto(f)} · {f.cargo.nombre}
                         </p>
