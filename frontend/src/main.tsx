@@ -9,7 +9,7 @@ import { AuthProvider } from '@/auth/AuthProvider'
 import { aplicarPreferencias, leerPreferencias } from '@/lib/accesibilidad'
 import { queryClient } from '@/lib/query-client'
 
-// Tamaño de texto y contraste elegidos por el usuario, antes del primer render.
+// Contraste elegido por el usuario, antes del primer render.
 aplicarPreferencias(leerPreferencias())
 
 createRoot(document.getElementById('root')!).render(

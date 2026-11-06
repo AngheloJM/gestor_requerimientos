@@ -139,8 +139,8 @@ en Supabase requiere confirmación):
       pares centro + monto, % calculado). Bloqueada si el cargo tiene un solo centro posible.
 - [x] Almanaque: una línea "Cargo, Servicio, cantidad" en la fecha de entrega, sin categorías
       ni colores; el detalle (cliente, estado, folio, ingreso a operaciones pactado) al tocar el día.
-- [x] Accesibilidad: tamaño de texto (A, A+, A++) y alto contraste en la barra superior, para
-      toda la app (preferencia guardada en el navegador).
+- [x] Accesibilidad: botón de alto contraste en la barra superior, para toda la app
+      (preferencia guardada en el navegador); almanaque con texto más grande.
 - [x] Aprobaciones: se agrega "Inicio de capacitación" y se quita "Fecha de fin" del detalle.
 
 A confirmar con la clienta (decisiones de interfaz tomadas a criterio, reversibles):
