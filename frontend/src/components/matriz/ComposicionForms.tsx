@@ -24,6 +24,43 @@ function cantidades(mujeres: string, hombres: string): string | undefined {
 }
 const entero = (v: string) => (v.trim() ? Number(v.trim()) : null)
 
+const DIAS = /^\d{1,4}$/
+type Tiempos = { capacitacion: string; ojt: string; ajustada: string }
+const TIEMPOS_VACIOS: Tiempos = { capacitacion: '', ojt: '', ajustada: '' }
+
+/** Tiempos opcionales en días enteros. */
+function tiemposValidos(t: Tiempos): string | undefined {
+  for (const [v, n] of [
+    [t.capacitacion, 'de capacitación'],
+    [t.ojt, 'de OJT'],
+    [t.ajustada, 'de capacitación ajustada'],
+  ]) {
+    if (v.trim() && !DIAS.test(v.trim())) return `Tiempo ${n}: número entero de días.`
+  }
+  return undefined
+}
+const tiemposBody = (t: Tiempos) => ({
+  tiempo_capacitacion_dias: entero(t.capacitacion),
+  tiempo_ojt_dias: entero(t.ojt),
+  tiempo_capacitacion_ajustada_dias: entero(t.ajustada),
+})
+
+function CamposTiempos({ t, set, ancho = '' }: { t: Tiempos; set: (t: Tiempos) => void; ancho?: string }) {
+  const campo = (k: keyof Tiempos, etiqueta: string) => (
+    <label className="grid gap-1 text-xs text-nova-gris">
+      {etiqueta}
+      <input className={`${entrada} ${ancho}`} inputMode="numeric" value={t[k]} onChange={(e) => set({ ...t, [k]: e.target.value })} />
+    </label>
+  )
+  return (
+    <>
+      {campo('capacitacion', 'Tiempo de capacitación (días)')}
+      {campo('ojt', 'Tiempo de OJT (días)')}
+      {campo('ajustada', 'Tiempo de capacitación ajustada (días)')}
+    </>
+  )
+}
+
 function CamposCantidades({
   mujeres,
   hombres,
@@ -75,6 +112,7 @@ export function NuevaComposicion({
   const [nocturno, setNocturno] = useState('')
   const [mujeres, setMujeres] = useState('')
   const [hombres, setHombres] = useState('')
+  const [tiempos, setTiempos] = useState<Tiempos>(TIEMPOS_VACIOS)
   const [aviso, setAviso] = useState<string>()
 
   const enviar = (e: React.FormEvent) => {
@@ -83,7 +121,7 @@ export function NuevaComposicion({
       ? 'Seleccione el servicio.'
       : !cargo
         ? 'Seleccione el cargo.'
-        : (haberes(diurno, nocturno) ?? cantidades(mujeres, hombres))
+        : (haberes(diurno, nocturno) ?? cantidades(mujeres, hombres) ?? tiemposValidos(tiempos))
     setAviso(msg)
     if (msg) return
     guardar.mutate(
@@ -95,6 +133,7 @@ export function NuevaComposicion({
           haber_basico_nocturno: nocturno.trim() || null,
           cantidad_mujeres: entero(mujeres),
           cantidad_hombres: entero(hombres),
+          ...tiemposBody(tiempos),
         },
       },
       {
@@ -145,6 +184,7 @@ export function NuevaComposicion({
           <input className={entrada} inputMode="decimal" value={nocturno} onChange={(e) => setNocturno(e.target.value)} />
         </label>
         <CamposCantidades mujeres={mujeres} hombres={hombres} setMujeres={setMujeres} setHombres={setHombres} />
+        <CamposTiempos t={tiempos} set={setTiempos} />
       </div>
       {servicioId && <p className="text-xs text-nova-gris">Después de guardar se abren las métricas y bonos de este cargo.</p>}
       {aviso && (
@@ -172,11 +212,16 @@ export function EditarHaberes({ fila, cerrar }: { fila: FilaMatriz; cerrar: () =
   const [nocturno, setNocturno] = useState(fila.haber_basico_nocturno ?? '')
   const [mujeres, setMujeres] = useState(fila.cantidad_mujeres?.toString() ?? '')
   const [hombres, setHombres] = useState(fila.cantidad_hombres?.toString() ?? '')
+  const [tiempos, setTiempos] = useState<Tiempos>({
+    capacitacion: fila.tiempo_capacitacion_dias?.toString() ?? '',
+    ojt: fila.tiempo_ojt_dias?.toString() ?? '',
+    ajustada: fila.tiempo_capacitacion_ajustada_dias?.toString() ?? '',
+  })
   const [aviso, setAviso] = useState<string>()
 
   const enviar = (e: React.FormEvent) => {
     e.preventDefault()
-    const msg = haberes(diurno, nocturno) ?? cantidades(mujeres, hombres)
+    const msg = haberes(diurno, nocturno) ?? cantidades(mujeres, hombres) ?? tiemposValidos(tiempos)
     setAviso(msg)
     if (msg) return
     guardar.mutate(
@@ -187,6 +232,7 @@ export function EditarHaberes({ fila, cerrar }: { fila: FilaMatriz; cerrar: () =
           haber_basico_nocturno: nocturno.trim() || null,
           cantidad_mujeres: entero(mujeres),
           cantidad_hombres: entero(hombres),
+          ...tiemposBody(tiempos),
         },
       },
       { onSuccess: cerrar },
@@ -204,6 +250,7 @@ export function EditarHaberes({ fila, cerrar }: { fila: FilaMatriz; cerrar: () =
         <input className={`${entrada} w-40`} inputMode="decimal" value={nocturno} onChange={(e) => setNocturno(e.target.value)} />
       </label>
       <CamposCantidades mujeres={mujeres} hombres={hombres} setMujeres={setMujeres} setHombres={setHombres} ancho="w-32" />
+      <CamposTiempos t={tiempos} set={setTiempos} ancho="w-40" />
       <Button type="button" variant="ghost" onClick={cerrar}>
         Cancelar
       </Button>

@@ -53,11 +53,11 @@ function Lineas({ dia, max }: { dia: DiaAlmanaque; max: number }) {
   return (
     <ul className="mt-1 grid gap-1">
       {ls.slice(0, max).map((l, i) => (
-        <li key={i} className="rounded bg-muted px-1.5 py-0.5 text-[11px] leading-tight [overflow-wrap:anywhere] text-nova-titulo">
+        <li key={i} className="rounded bg-muted px-1.5 py-1 text-sm leading-snug [overflow-wrap:anywhere] text-nova-titulo">
           {resumen(l)}
         </li>
       ))}
-      {ls.length > max && <li className="px-1.5 text-[11px] text-nova-gris">+{ls.length - max} más</li>}
+      {ls.length > max && <li className="px-1.5 text-sm text-nova-gris">+{ls.length - max} más</li>}
     </ul>
   )
 }
@@ -73,8 +73,8 @@ function Detalle({ dia, cerrar, porFolio }: { dia: DiaAlmanaque; cerrar: () => v
   return (
     <aside ref={ref} tabIndex={-1} className="scroll-mt-20 rounded-xl border bg-card p-5 shadow-nova-sm outline-none" aria-label="Detalle del día">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-lg font-semibold text-nova-titulo">
-          <span className="block text-xs font-medium text-nova-gris capitalize">{SEMANA_LARGA[diaSemanaLunes(dia.fecha)]}</span>
+        <h3 className="text-xl font-semibold text-nova-titulo">
+          <span className="block text-sm font-medium text-nova-gris capitalize">{SEMANA_LARGA[diaSemanaLunes(dia.fecha)]}</span>
           {formatFecha(dia.fecha)}
         </h3>
         <Button variant="ghost" size="icon" onClick={cerrar} aria-label="Cerrar detalle">
@@ -82,15 +82,15 @@ function Detalle({ dia, cerrar, porFolio }: { dia: DiaAlmanaque; cerrar: () => v
         </Button>
       </div>
       {ls.length === 0 ? (
-        <p className="mt-3 text-sm text-nova-gris">Sin entregas este día.</p>
+        <p className="mt-3 text-base text-nova-gris">Sin entregas este día.</p>
       ) : (
         <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {ls.map((l, i) => {
             const estado = l.estado_entrega ? ESTADO_ENTREGA[l.estado_entrega] : undefined
             return (
-              <li key={i} className="rounded-lg border bg-white p-3 text-sm">
+              <li key={i} className="rounded-lg border bg-white p-4 text-base">
                 <p className="font-semibold text-nova-titulo">{resumen(l)}</p>
-                <dl className="mt-2 grid gap-1 text-sm">
+                <dl className="mt-2 grid gap-1.5 text-base">
                   <div className="flex flex-wrap gap-x-2">
                     <dt className="text-nova-texto-2">Cliente:</dt>
                     <dd className="font-medium text-nova-titulo">{l.cliente ?? '—'}</dd>
@@ -117,7 +117,7 @@ function Detalle({ dia, cerrar, porFolio }: { dia: DiaAlmanaque; cerrar: () => v
                   })}
                 </dl>
                 {l.registros_sin_cantidad > 0 && (
-                  <p className="mt-1 text-xs text-nova-gris">{l.registros_sin_cantidad} registro(s) sin cantidad informada (no se suman).</p>
+                  <p className="mt-1 text-sm text-nova-gris">{l.registros_sin_cantidad} registro(s) sin cantidad informada (no se suman).</p>
                 )}
               </li>
             )
@@ -156,13 +156,13 @@ export function AlmanaquePage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold text-nova-titulo">Almanaque</h2>
-          <p className="mt-1 text-sm text-nova-gris">Entregas de personal por día. Tocá un día para ver el detalle.</p>
+          <p className="mt-1 text-base text-nova-gris">Entregas de personal por día. Tocá un día para ver el detalle.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => mover(-1)} aria-label="Mes anterior">
             <ChevronLeft />
           </Button>
-          <p className={cn('min-w-40 text-center font-semibold text-nova-titulo capitalize', isFetching && 'opacity-60')} aria-live="polite">
+          <p className={cn('min-w-48 text-center text-lg font-semibold text-nova-titulo capitalize', isFetching && 'opacity-60')} aria-live="polite">
             {nombreMes(anio, mes)}
           </p>
           <Button variant="outline" size="icon" onClick={() => mover(1)} aria-label="Mes siguiente">
@@ -179,7 +179,7 @@ export function AlmanaquePage() {
         <div className="grid items-start gap-5">
           {/* Calendario (tablet y escritorio) */}
           <div className="hidden overflow-hidden rounded-xl border bg-card shadow-nova-sm md:block">
-            <div className="grid grid-cols-7 border-b bg-nova-hielo/50 text-center text-xs font-medium tracking-wide text-nova-gris uppercase">
+            <div className="grid grid-cols-7 border-b bg-nova-hielo/50 text-center text-sm font-medium tracking-wide text-nova-gris uppercase">
               {SEMANA.map((s) => (
                 <div key={s} className="py-2">
                   {s}
@@ -188,7 +188,7 @@ export function AlmanaquePage() {
             </div>
             <div className="grid grid-cols-7">
               {Array.from({ length: vacios }, (_, i) => (
-                <div key={`v${i}`} className="min-h-28 border-r border-b bg-muted/30" />
+                <div key={`v${i}`} className="min-h-32 border-r border-b bg-muted/30" />
               ))}
               {dias.map((d) => {
                 const n = lineas(d).length
@@ -200,13 +200,13 @@ export function AlmanaquePage() {
                     aria-pressed={d.fecha === seleccion}
                     aria-label={`${formatFecha(d.fecha)}: ${n === 0 ? 'sin entregas' : lineas(d).map(resumen).join('; ')}`}
                     className={cn(
-                      'flex min-h-28 min-w-0 flex-col items-stretch overflow-hidden justify-start border-r border-b p-1.5 text-left transition-colors hover:bg-nova-hielo/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                      'flex min-h-32 min-w-0 flex-col items-stretch overflow-hidden justify-start border-r border-b p-1.5 text-left transition-colors hover:bg-nova-hielo/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
                       d.fecha === seleccion && 'bg-nova-hielo',
                     )}
                   >
                     <span
                       className={cn(
-                        'inline-grid size-6 place-items-center rounded-full text-xs font-medium text-nova-texto-2',
+                        'inline-grid size-8 place-items-center rounded-full text-base font-medium text-nova-texto-2',
                         d.fecha === hoy && 'bg-nova-azul text-white',
                       )}
                     >
@@ -235,7 +235,7 @@ export function AlmanaquePage() {
                     onClick={() => setSeleccion(d.fecha)}
                     className="w-full rounded-xl border bg-card p-3 text-left shadow-nova-xs"
                   >
-                    <p className="font-semibold text-nova-titulo">{formatFecha(d.fecha)}</p>
+                    <p className="text-lg font-semibold text-nova-titulo">{formatFecha(d.fecha)}</p>
                     <Lineas dia={d} max={6} />
                   </button>
                 </li>

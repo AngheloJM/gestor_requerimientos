@@ -29,7 +29,7 @@ export function CargosServicio({ servicioId, esRrhh }: { servicioId: string; esR
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h4 className="font-semibold text-nova-titulo">Cargos de este servicio</h4>
-          <p className="text-xs text-nova-gris">Cargo, composición salarial, cantidades y métricas.</p>
+          <p className="text-xs text-nova-gris">Cargo, composición salarial, cantidades, tiempos de capacitación y métricas.</p>
         </div>
         {esRrhh && (
           <Button size="sm" onClick={() => setAgregando(!agregando)} aria-expanded={agregando}>
@@ -57,7 +57,7 @@ export function CargosServicio({ servicioId, esRrhh }: { servicioId: string; esR
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-nova-hielo text-left text-xs tracking-wide text-nova-gris uppercase">
               <tr>
                 <th className="px-3 py-2 font-medium">Cargo</th>
@@ -65,6 +65,7 @@ export function CargosServicio({ servicioId, esRrhh }: { servicioId: string; esR
                 <th className="px-3 py-2 text-right font-medium">Haber nocturno</th>
                 <th className="px-3 py-2 text-right font-medium">Mujeres</th>
                 <th className="px-3 py-2 text-right font-medium">Hombres</th>
+                <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Capacitación / OJT / ajustada</th>
                 <th className="px-3 py-2 text-right font-medium">Total ganado</th>
                 <th className="px-3 py-2" aria-label="Acciones" />
               </tr>
@@ -78,6 +79,9 @@ export function CargosServicio({ servicioId, esRrhh }: { servicioId: string; esR
                     <td className="px-3 py-2 text-right tabular-nums">{bs(f.haber_basico_nocturno)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{f.cantidad_mujeres ?? '—'}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{f.cantidad_hombres ?? '—'}</td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
+                      {[f.tiempo_capacitacion_dias, f.tiempo_ojt_dias, f.tiempo_capacitacion_ajustada_dias].map((d) => (d != null ? `${d} d` : '—')).join(' · ')}
+                    </td>
                     <td className="px-3 py-2 text-right font-semibold tabular-nums text-nova-azul">{bs(f.total_ganado)}</td>
                     <td className="px-3 py-1.5 text-right whitespace-nowrap">
                       {esRrhh && (
@@ -104,9 +108,9 @@ export function CargosServicio({ servicioId, esRrhh }: { servicioId: string; esR
                   </tr>
                   {abierto?.id === f.servicio_cargo_id && (
                     <tr>
-                      <td colSpan={7} className="border-t bg-nova-hielo/30 px-3 py-3">
+                      <td colSpan={8} className="border-t bg-nova-hielo/30 px-3 py-3">
                         <p className="mb-2 text-xs text-nova-gris">
-                          {abierto.modo === 'editar' ? 'Composición salarial y cantidades' : 'Métricas y bonos'} · {f.cargo.nombre}
+                          {abierto.modo === 'editar' ? 'Composición salarial, cantidades y tiempos' : 'Métricas y bonos'} · {f.cargo.nombre}
                         </p>
                         {abierto.modo === 'editar' ? (
                           <EditarHaberes fila={f} cerrar={() => setAbierto(null)} />

@@ -124,47 +124,44 @@ Actualizado con el schema real de Supabase (inspección directa del proyecto).
 
 ## Revisión con la clienta del 04/11/2026
 
-Aplicado (migración `0004_revision_matriz.sql`, aditiva, **solo en la base local**; aplicarla
-en Supabase requiere confirmación):
+Aplicado (migración `0004_revision_matriz.sql`, aditiva):
 
 - [x] Tablero: indicadores con el número solo (sin "2/4"); al tocarlos despliegan la lista
-      (incompletos con % de completitud). Título del Kanban: "Cantidad de servicios no completos".
+      (incompletos con % de completitud). Título del Kanban: "Cantidad de servicios no completos";
+      sus tarjetas siguen siendo las solicitudes de cambio (confirmado 2026-11-06).
 - [x] Matriz: orden Clientes → Centros de costo → Contratos → Cargos → Servicios → Composición
-      salarial. **Proyecto oculto** en el front (`MOSTRAR_PROYECTOS`); tabla, relación con
-      cliente y `servicios.proyecto_id` intactos en base y API.
+      salarial. Pestaña "Clientes" (confirmado). **Proyecto oculto** en el front
+      (`MOSTRAR_PROYECTOS`); tabla, relación con cliente y `servicios.proyecto_id` intactos.
+- [x] Textos formales "Registro de nuevo cliente" y "Seleccione una opción" (confirmados).
+- [x] Centros de costo: solo selección, sin alta desde la app (confirmado 2026-11-06).
 - [x] Contratos: "Tiempo de renovación" opcional (`tiempo_renovacion_valor` + `_unidad`).
-- [x] Servicio: tres tiempos (capacitación, OJT, capacitación ajustada); cargos dentro del
-      formulario del servicio con composición salarial, cantidad de mujeres/hombres y métricas.
-- [x] Composición salarial: pestaña para cargos compartidos (tabla `cargo_centros_costo`,
-      pares centro + monto, % calculado). Bloqueada si el cargo tiene un solo centro posible.
+- [x] Cargo dentro del servicio (`servicio_cargos`, un valor por servicio + cargo, confirmado):
+      composición salarial, cantidad de mujeres/hombres, tiempos de capacitación / OJT /
+      capacitación ajustada y métricas.
+- [x] Composición salarial: cargos compartidos (tabla `cargo_centros_costo`, centro + monto,
+      % calculado); "compartido" = asignado a servicios activos de ≥ 2 centros de costo
+      (confirmado). Se mantiene el "Resumen por servicio" de lectura (confirmado).
+- [x] Nuevo requerimiento con motivo "Crecimiento": muestra como referencia las mujeres/hombres
+      configurados del cargo; no autocompleta nada.
 - [x] Almanaque: una línea "Cargo, Servicio, cantidad" en la fecha de entrega, sin categorías
-      ni colores; el detalle (cliente, estado, folio, ingreso a operaciones pactado) al tocar el día.
+      ni colores; detalle al tocar el día; letra un poco más grande.
 - [x] Aprobaciones: se agrega "Inicio de capacitación" y se quita "Fecha de fin" del detalle.
 
-A confirmar con la clienta (decisiones de interfaz tomadas a criterio, reversibles):
+A confirmar / TODO(negocio):
 
-- [ ] Redacción formal: "Registro de nuevo cliente" y "Seleccione una opción" en los desplegables.
-- [ ] Pestaña "Clientes y proyectos" renombrada a "Clientes" mientras Proyecto esté oculto.
-- [ ] Kanban del Tablero: se cambió solo el título; su contenido sigue siendo las solicitudes de
-      cambio por área. ¿Debe mostrar otra cosa (servicios no completos por área)?
-- [ ] % de completitud: criterios evaluados hoy (contrato vigente y cargos definidos) con igual peso.
-- [ ] Cantidad de mujeres/hombres: se guardan **por cargo del servicio** (`servicio_cargos`).
-- [ ] Cargo "compartido": centros posibles = centros de los servicios activos donde el cargo
-      está asignado; con menos de dos no se puede guardar. Solo RR.HH. ve y edita la distribución.
-- [ ] Composición salarial: además de los cargos compartidos se mantiene el "Resumen por
-      servicio" (lectura, filtros, Salario Mínimo Nacional, "Solicitar cambio"). ¿Se quita?
+- [ ] **Tiempo de capacitación al crear requerimientos**: la función de producción
+      `crear_requerimiento_con_snapshot` usa `servicios.tiempo_capacitacion_dias` (un valor por
+      servicio, se mantiene en el formulario como "general"). Para usar el tiempo por cargo hay
+      que modificar esa función (cambio no aditivo: requiere decisión y confirmación), y definir
+      cuál de los tres tiempos usa.
+- [ ] Crecimiento: confirmar con la clienta si quiere algo más que la referencia informativa.
 - [ ] Almanaque: rectificaciones mostradas como "(corrección)" con su signo, sin netear; ya no
-      se muestran ingresos a operación ni salidas en el calendario. ¿Se necesitan?
-
-TODO(negocio):
-
-- [ ] Cuál de los tres tiempos de capacitación define la fecha de inicio de capacitación del
-      requerimiento (hoy la función de producción usa `tiempo_capacitacion_dias`).
-- [ ] Usar los datos del servicio/cargo (cantidades, tiempos) al crear un requerimiento de
-      motivo "Crecimiento" (confirmado que debe poder hacerse; falta definir qué se precarga).
+      se muestran ingresos a operación ni salidas en el calendario.
+- [ ] % de completitud del Tablero: criterios evaluados hoy (contrato vigente y cargos
+      definidos) con igual peso.
 - [ ] Alertas por tiempo de renovación de contratos (hoy solo se registra el dato).
-- [ ] Centros de costo: la revisión menciona dejarlos "de solo selección" (sin alta) por una
-      instrucción de una ronda anterior que no está registrada en este repositorio; no se tocó.
+- [ ] Centros de costo en producción: reemplazar TIGO-BO / TIGO-ST por la lista real requiere
+      reasignar sus 8 servicios (decisión de mapeo pendiente).
 
 ## Nuevo requerimiento
 

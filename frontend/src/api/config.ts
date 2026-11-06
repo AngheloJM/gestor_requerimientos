@@ -57,8 +57,6 @@ export interface ServicioCfg {
   departamento_region: string | null
   manual_funciones_codigo: string | null
   tiempo_capacitacion_dias: number | null
-  tiempo_ojt_dias: number | null
-  tiempo_capacitacion_ajustada_dias: number | null
   capacitacion_pagada: boolean | null
   tiene_refrigerio: boolean | null
   activo: boolean

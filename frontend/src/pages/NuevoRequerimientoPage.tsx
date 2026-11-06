@@ -153,9 +153,9 @@ export function NuevoRequerimientoPage() {
   } = useForm<Formulario>({ resolver: zodResolver(esquema), defaultValues: VACIO })
   const bonos = useFieldArray({ control, name: 'bonos_extra' })
 
-  const [tipo, servicio, cargoId, operacion] = useWatch({
+  const [tipo, servicio, cargoId, operacion, motivo] = useWatch({
     control,
-    name: ['tipo', 'servicio', 'cargo_id', 'fecha_inicio_operacion'],
+    name: ['tipo', 'servicio', 'cargo_id', 'fecha_inicio_operacion', 'motivo'],
   })
 
   const datos = opciones.data
@@ -320,6 +320,15 @@ export function NuevoRequerimientoPage() {
                 </select>
               </Campo>
             </div>
+            {/* Crecimiento: solo referencia informativa, no se autocompleta nada.
+                TODO(negocio): confirmar con la clienta si quiere algo más específico. */}
+            {motivo === 'Crecimiento' && cargoSel && servicio !== SIN_SERVICIO && (
+              <p className="rounded-lg border border-info/30 bg-info/5 px-3 py-2 text-sm text-nova-texto-2" role="note">
+                {cargoSel.cantidad_mujeres == null && cargoSel.cantidad_hombres == null
+                  ? 'Este cargo no tiene configuradas cantidades de mujeres y hombres.'
+                  : `Este cargo tiene configurado: ${cargoSel.cantidad_mujeres ?? 0} mujer${cargoSel.cantidad_mujeres === 1 ? '' : 'es'}, ${cargoSel.cantidad_hombres ?? 0} hombre${cargoSel.cantidad_hombres === 1 ? '' : 's'}.`}
+              </p>
+            )}
           </Seccion>
 
           <Seccion titulo="4. Bonos extra (opcional)">

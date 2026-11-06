@@ -99,7 +99,8 @@ export function CentrosCosto({ esRrhh }: Permisos) {
       filas={q.data}
       cargando={q.isPending}
       error={q.error}
-      permisos={todo(esRrhh)}
+      // Solo selección (confirmado 2026-11-06): sin alta desde la app.
+      permisos={{ crear: false, editar: esRrhh, eliminar: esRrhh }}
       idDe={(c) => c.id}
       nombreDe={(c) => `${c.codigo} · ${c.nombre}`}
       columnas={[
@@ -147,12 +148,7 @@ export function Servicios({ esRrhh }: Permisos) {
         { titulo: 'Contrato', valor: (s) => vacio(s.contrato_nombre), clase: 'whitespace-nowrap' },
         { titulo: 'Modalidad', valor: (s) => s.modalidad, clase: 'whitespace-nowrap' },
         { titulo: 'Días', valor: (s) => s.dias_trabajo.map((d) => d.slice(0, 3)).join(', ') || '—', clase: 'whitespace-nowrap' },
-        {
-          titulo: 'Capacitación / OJT / ajustada',
-          valor: (s) =>
-            [s.tiempo_capacitacion_dias, s.tiempo_ojt_dias, s.tiempo_capacitacion_ajustada_dias].map((d) => (d != null ? `${d} d` : '—')).join(' · '),
-          clase: 'whitespace-nowrap',
-        },
+        { titulo: 'Capacitación', valor: (s) => (s.tiempo_capacitacion_dias != null ? `${s.tiempo_capacitacion_dias} d` : '—') },
         {
           titulo: 'Estado',
           valor: (s) => (s.activo ? <EstadoBadge tono="exito">Activo</EstadoBadge> : <EstadoBadge tono="error">Inactivo</EstadoBadge>),
@@ -203,16 +199,16 @@ export function Servicios({ esRrhh }: Permisos) {
           opciones: () => pares([...DEPARTAMENTOS]),
         },
         { nombre: 'manual_funciones_codigo', etiqueta: 'Código de manual de funciones', tipo: 'texto' },
-        // Tres tiempos (revisión 04/11/2026). TODO(negocio): cuál define la fecha de inicio de
-        // capacitación del requerimiento; hoy la base usa "Tiempo de capacitación".
-        { nombre: 'tiempo_capacitacion_dias', etiqueta: 'Tiempo de capacitación (días)', tipo: 'select', otro: true, opciones: opcionesDias },
-        { nombre: 'tiempo_ojt_dias', etiqueta: 'Tiempo de OJT (días)', tipo: 'select', otro: true, opciones: opcionesDias },
+        // Los tres tiempos (capacitación, OJT, ajustada) se cargan por cargo, dentro de "Cargos de
+        // este servicio". Este valor general es el que hoy usa la base (crear_requerimiento_con_snapshot)
+        // para calcular el inicio de capacitación. TODO(negocio): pasar esa función al valor por cargo.
         {
-          nombre: 'tiempo_capacitacion_ajustada_dias',
-          etiqueta: 'Tiempo de capacitación ajustada (días)',
+          nombre: 'tiempo_capacitacion_dias',
+          etiqueta: 'Tiempo de capacitación general (días)',
           tipo: 'select',
           otro: true,
           opciones: opcionesDias,
+          ayuda: 'Lo usa hoy la base al crear requerimientos. Los tiempos por cargo van en cada cargo.',
         },
         { nombre: 'capacitacion_pagada', etiqueta: 'Capacitación pagada', tipo: 'switch' },
         { nombre: 'tiene_refrigerio', etiqueta: 'Tiene refrigerio', tipo: 'switch' },
@@ -233,22 +229,13 @@ export function Servicios({ esRrhh }: Permisos) {
         departamento_region: s?.departamento_region ?? '',
         manual_funciones_codigo: s?.manual_funciones_codigo ?? '',
         tiempo_capacitacion_dias: s?.tiempo_capacitacion_dias?.toString() ?? '',
-        tiempo_ojt_dias: s?.tiempo_ojt_dias?.toString() ?? '',
-        tiempo_capacitacion_ajustada_dias: s?.tiempo_capacitacion_ajustada_dias?.toString() ?? '',
         capacitacion_pagada: s?.capacitacion_pagada ?? false,
         tiene_refrigerio: s?.tiene_refrigerio ?? false,
         activo: s?.activo ?? true,
       })}
       validar={(v) => {
-        for (const [k, nombre] of [
-          ['tiempo_capacitacion_dias', 'de capacitación'],
-          ['tiempo_ojt_dias', 'de OJT'],
-          ['tiempo_capacitacion_ajustada_dias', 'de capacitación ajustada'],
-        ]) {
-          const t = texto(v, k)
-          if (t && !NUMERO_ENTERO.test(t)) return `El tiempo ${nombre} debe ser un número entero de días.`
-        }
-        return undefined
+        const t = texto(v, 'tiempo_capacitacion_dias')
+        return t && !NUMERO_ENTERO.test(t) ? 'El tiempo de capacitación debe ser un número entero de días.' : undefined
       }}
       extraEdicion={(s) => <CargosServicio servicioId={s.id} esRrhh={esRrhh} />}
       aBody={(v: Valores) => ({
@@ -265,8 +252,6 @@ export function Servicios({ esRrhh }: Permisos) {
         departamento_region: textoONulo(v, 'departamento_region'),
         manual_funciones_codigo: textoONulo(v, 'manual_funciones_codigo'),
         tiempo_capacitacion_dias: numeroONulo(v, 'tiempo_capacitacion_dias'),
-        tiempo_ojt_dias: numeroONulo(v, 'tiempo_ojt_dias'),
-        tiempo_capacitacion_ajustada_dias: numeroONulo(v, 'tiempo_capacitacion_ajustada_dias'),
         capacitacion_pagada: v.capacitacion_pagada,
         tiene_refrigerio: v.tiene_refrigerio,
         activo: v.activo,

@@ -73,6 +73,10 @@ export interface FilaMatriz {
   /** A confirmar: cantidades por cargo del servicio. */
   cantidad_mujeres: number | null
   cantidad_hombres: number | null
+  /** Tiempos de capacitación del cargo en este servicio (días). */
+  tiempo_capacitacion_dias: number | null
+  tiempo_ojt_dias: number | null
+  tiempo_capacitacion_ajustada_dias: number | null
   total_haberes: Monto
   /** Haberes + suma de monto_bono configurados (sin ajustar por cumplimiento real). */
   total_ganado: Monto
@@ -140,6 +144,9 @@ export interface CargoOpcion {
   id: Uuid
   nombre: string
   tipo: TipoCargo | string | null
+  /** Configurado en el servicio (referencia para requerimientos de crecimiento). */
+  cantidad_mujeres: number | null
+  cantidad_hombres: number | null
 }
 
 export interface ServicioOpcion {
