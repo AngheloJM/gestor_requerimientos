@@ -167,7 +167,7 @@ export function TableroPage() {
           {/* A confirmar: el % considera solo los criterios evaluados hoy (contrato vigente y cargos definidos), con igual peso. */}
           <p className="border-t px-5 py-3 text-xs text-nova-gris">
             El % considera los criterios evaluados hoy: contrato comercial vigente y cargos definidos.
-            {criterios_sin_definir.length > 0 && <> Aún no se evalúa: {criterios_sin_definir.join(', ')}.</>}
+            {criterios_sin_definir.length > 0 && <> Aún no se evalúa: {criterios_sin_definir.map((c) => c.replaceAll('_', ' ')).join(', ')}.</>}
           </p>
         </section>
       )}
