@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CheckCircle2, Info, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { ArrowLeft, CheckCircle2, ClipboardCheck, Info, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capacitacionCalculada } from '@/lib/capacitacion'
+import { formatFecha, formatMonto } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const TIPOS: { valor: TipoRequerimiento; titulo: string; detalle: string }[] = [
@@ -138,6 +139,84 @@ function Exito({ folio, otro }: { folio: string; otro: () => void }) {
   )
 }
 
+const ETIQUETA_TIPO: Record<string, string> = { nuevo: 'Nuevo', modificacion: 'Modificación', promocion: 'Promoción', cambio: 'Cambio' }
+
+function Resumen({
+  r,
+  servicio,
+  cargo,
+  creando,
+  error,
+  volver,
+  confirmar,
+}: {
+  r: CrearRequerimiento
+  servicio: string
+  cargo: string
+  creando: boolean
+  error: unknown
+  volver: () => void
+  confirmar: () => void
+}) {
+  const filas: [string, React.ReactNode][] = [
+    ['Tipo', ETIQUETA_TIPO[r.tipo] ?? r.tipo],
+    ['Cantidad de personas', r.cantidad],
+    ['Motivo', r.motivo],
+    ['Servicio', servicio],
+    ['Cargo', cargo],
+    ['Fecha de inicio de operación', formatFecha(r.fecha_inicio_operacion)],
+  ]
+  return (
+    <section className="grid min-w-0 gap-5 rounded-xl border border-nova-azul/40 bg-card p-6 shadow-nova-md" aria-label="Resumen del requerimiento">
+      <div className="flex items-start gap-3">
+        <ClipboardCheck className="mt-0.5 size-5 text-nova-azul" aria-hidden />
+        <div>
+          <h3 className="text-lg font-semibold text-nova-titulo">Revisá el requerimiento antes de crearlo</h3>
+          <p className="text-sm text-nova-gris">Todavía no se guardó. Al confirmar se congelan el sueldo y los bonos del cargo.</p>
+        </div>
+      </div>
+      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+        {filas.map(([t, v]) => (
+          <div key={t}>
+            <dt className="text-xs text-nova-gris">{t}</dt>
+            <dd className="mt-0.5 text-sm font-medium text-nova-titulo">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <div>
+        <p className="text-xs text-nova-gris">Bonos extra</p>
+        {r.bonos_extra.length === 0 ? (
+          <p className="mt-0.5 text-sm text-nova-titulo">Ninguno</p>
+        ) : (
+          <ul className="mt-1 divide-y rounded-lg border">
+            {r.bonos_extra.map((b, i) => (
+              <li key={i} className="flex flex-wrap justify-between gap-2 px-3 py-2 text-sm">
+                <span>
+                  {b.nombre} <span className="text-nova-gris">· {b.motivo}</span>
+                </span>
+                <span className="tabular-nums">Bs {formatMonto(b.monto)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        <p className="text-xs text-nova-gris">Comentarios adicionales</p>
+        <p className="mt-0.5 text-sm whitespace-pre-wrap text-nova-titulo">{r.comentarios ?? 'Sin comentarios'}</p>
+      </div>
+      {error ? <ErrorApi error={error} /> : null}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="outline" onClick={volver} disabled={creando}>
+          <ArrowLeft aria-hidden /> Volver a editar
+        </Button>
+        <Button type="button" onClick={confirmar} disabled={creando}>
+          {creando ? 'Creando…' : 'Confirmar y crear'}
+        </Button>
+      </div>
+    </section>
+  )
+}
+
 export function NuevoRequerimientoPage() {
   const opciones = useOpcionesRequerimiento()
   const { data: me } = useMe()
@@ -151,6 +230,8 @@ export function NuevoRequerimientoPage() {
     formState: { errors },
   } = useForm<Formulario>({ resolver: zodResolver(esquema), defaultValues: VACIO })
   const bonos = useFieldArray({ control, name: 'bonos_extra' })
+  // Paso de confirmación: el formulario válido muestra un resumen; recién ahí se crea.
+  const [resumen, setResumen] = useState<CrearRequerimiento | null>(null)
 
   const [tipo, servicio, cargoId, operacion, motivo] = useWatch({
     control,
@@ -190,7 +271,9 @@ export function NuevoRequerimientoPage() {
       comentarios: f.comentarios.trim() || null,
       bonos_extra: f.bonos_extra.map((b) => ({ nombre: b.nombre.trim(), monto: b.monto, motivo: b.motivo.trim() })),
     }
-    crear.mutate(body)
+    crear.reset()
+    setResumen(body)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   })
 
   if (crear.data) {
@@ -199,6 +282,7 @@ export function NuevoRequerimientoPage() {
         folio={crear.data.folio}
         otro={() => {
           crear.reset()
+          setResumen(null)
           reset(VACIO)
         }}
       />
@@ -230,7 +314,22 @@ export function NuevoRequerimientoPage() {
       </div>
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
-        <form onSubmit={enviar} noValidate className="grid min-w-0 gap-5">
+        {resumen && (
+          <Resumen
+            r={resumen}
+            servicio={sinServicio ? 'Sin servicio (staff)' : (servicioSel?.nombre ?? '—')}
+            cargo={cargoSel?.nombre ?? '—'}
+            creando={crear.isPending}
+            error={crear.error}
+            volver={() => {
+              crear.reset()
+              setResumen(null)
+            }}
+            confirmar={() => crear.mutate(resumen)}
+          />
+        )}
+        {/* Oculto (no desmontado) durante el resumen, para no perder lo cargado. */}
+        <form onSubmit={enviar} noValidate className="grid min-w-0 gap-5" hidden={!!resumen}>
           {sinServicios && (
             <div className="flex gap-3 rounded-xl border border-advertencia/40 bg-advertencia/10 p-4 text-sm">
               <Info className="mt-0.5 size-4 shrink-0 text-[#B45309]" aria-hidden />
@@ -361,14 +460,12 @@ export function NuevoRequerimientoPage() {
             </div>
           </Seccion>
 
-          {crear.error && <ErrorApi error={crear.error} />}
-
           <div className="flex flex-wrap justify-end gap-2 pb-4">
             <Link to="/requerimientos" className={buttonVariants({ variant: 'outline' })}>
               Cancelar
             </Link>
-            <Button type="submit" disabled={crear.isPending || sinServicios}>
-              {crear.isPending ? 'Guardando…' : 'Crear requerimiento'}
+            <Button type="submit" disabled={sinServicios}>
+              Revisar y crear
             </Button>
           </div>
         </form>

@@ -168,6 +168,8 @@ A confirmar / TODO(negocio):
 
 - [x] Datos del solicitante en la columna derecha, junto a los datos fijos del servicio (en
       "Nuevo requerimiento" y en el detalle).
+- [x] **Resumen antes de crear**: "Revisar y crear" valida y muestra un resumen; recién
+      "Confirmar y crear" guarda. "Volver a editar" conserva lo cargado.
 - [x] **Solo fecha de inicio de operación** (pedido de la clienta): se quitaron del formulario
       la fecha de inicio de capacitación, el tiempo de capacitación y la fecha de fin.
 - [ ] A confirmar: la base exige también la fecha de capacitación. Si el cargo es operativo y el
