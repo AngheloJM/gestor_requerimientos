@@ -37,6 +37,7 @@ SELECT
     r.fecha_fin_tentativa::date    AS fecha_fin_tentativa,
     r.fecha_fin::date              AS fecha_fin,
     r.fecha_inicio_operacion::date AS fecha_inicio_operacion,
+    r.fecha_inicio_capacitacion::date AS fecha_inicio_capacitacion,
     r.motivo::text                 AS motivo,
     u.nombre::text                 AS solicitante_nombre,
     r.updated_at::timestamptz      AS version,
@@ -85,6 +86,7 @@ struct AprobacionRow {
     fecha_fin_tentativa: Option<NaiveDate>,
     fecha_fin: Option<NaiveDate>,
     fecha_inicio_operacion: Option<NaiveDate>,
+    fecha_inicio_capacitacion: Option<NaiveDate>,
     motivo: Option<String>,
     solicitante_nombre: Option<String>,
     modificado_por: Option<Uuid>,
@@ -114,6 +116,7 @@ impl TryFrom<AprobacionRow> for Aprobacion {
             fecha_fin_tentativa: r.fecha_fin_tentativa,
             fecha_fin: r.fecha_fin,
             fecha_inicio_operacion: r.fecha_inicio_operacion,
+            fecha_inicio_capacitacion: r.fecha_inicio_capacitacion,
             motivo: r.motivo,
             solicitante_nombre: r.solicitante_nombre,
             ultima_modificacion: r.modificado_en.map(|fecha| Modificacion {

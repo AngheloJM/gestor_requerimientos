@@ -109,8 +109,8 @@ function Decision({ a, cerrar }: { a: Aprobacion; cerrar: () => void }) {
         <Dato etiqueta="Tipo">{etiquetaTipo(a.tipo)}</Dato>
         <Dato etiqueta="Motivo">{texto(a.motivo)}</Dato>
         <Dato etiqueta="Cantidad">{a.cantidad ?? '—'}</Dato>
+        <Dato etiqueta="Inicio de capacitación">{formatFecha(a.fecha_inicio_capacitacion)}</Dato>
         <Dato etiqueta="Inicio de operación">{formatFecha(a.fecha_inicio_operacion)}</Dato>
-        <Dato etiqueta="Fecha de fin">{formatFecha(a.fecha_fin)}</Dato>
       </dl>
 
       <div className="grid gap-2 border-t pt-4">

@@ -50,6 +50,7 @@ pub struct AprobacionDto {
     pub fecha_fin_tentativa: Option<NaiveDate>,
     pub fecha_fin: Option<NaiveDate>,
     pub fecha_inicio_operacion: Option<NaiveDate>,
+    pub fecha_inicio_capacitacion: Option<NaiveDate>,
     pub motivo: Option<String>,
     pub solicitante: Option<String>,
     pub ultima_modificacion: Option<ModificacionDto>,
@@ -72,6 +73,7 @@ impl From<Aprobacion> for AprobacionDto {
             fecha_fin_tentativa: a.fecha_fin_tentativa,
             fecha_fin: a.fecha_fin,
             fecha_inicio_operacion: a.fecha_inicio_operacion,
+            fecha_inicio_capacitacion: a.fecha_inicio_capacitacion,
             motivo: a.motivo,
             solicitante: a.solicitante_nombre,
             ultima_modificacion: a.ultima_modificacion.map(|m| ModificacionDto {

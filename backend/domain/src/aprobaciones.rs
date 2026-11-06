@@ -30,6 +30,7 @@ pub struct Aprobacion {
     /// Editable por RR.HH. (`requerimientos.fecha_fin`).
     pub fecha_fin: Option<NaiveDate>,
     pub fecha_inicio_operacion: Option<NaiveDate>,
+    pub fecha_inicio_capacitacion: Option<NaiveDate>,
     pub motivo: Option<String>,
     /// Nombre del solicitante (si RLS permite ver su fila en `usuarios`).
     pub solicitante_nombre: Option<String>,

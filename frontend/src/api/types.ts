@@ -279,6 +279,7 @@ export interface Aprobacion {
   fecha_fin_tentativa: FechaIso | null
   fecha_fin: FechaIso | null
   fecha_inicio_operacion: FechaIso | null
+  fecha_inicio_capacitacion: FechaIso | null
   motivo: string | null
   /** Nombre del solicitante (null si no es visible). */
   solicitante: string | null
