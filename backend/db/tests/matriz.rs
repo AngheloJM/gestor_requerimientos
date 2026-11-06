@@ -25,7 +25,16 @@ fn etiquetas(v: &[FilaMatriz]) -> Vec<String> {
 }
 
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
-#[sqlx::test(migrations = false, fixtures("supabase_subset", "rls_test", "datos"))]
+#[sqlx::test(
+    migrations = false,
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "revision_matriz"
+    )
+)]
 async fn orden_centro_costo_cliente_servicio_cargo_y_solo_activos(pool: db::PgPool) {
     assert_eq!(
         etiquetas(&matriz(&pool, RRHH, FiltrosMatriz::default()).await),
@@ -41,7 +50,16 @@ async fn orden_centro_costo_cliente_servicio_cargo_y_solo_activos(pool: db::PgPo
 }
 
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
-#[sqlx::test(migrations = false, fixtures("supabase_subset", "rls_test", "datos"))]
+#[sqlx::test(
+    migrations = false,
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "revision_matriz"
+    )
+)]
 async fn cargo_es_catalogo_compartido_y_composicion_por_servicio(pool: db::PgPool) {
     let filas = matriz(&pool, RRHH, FiltrosMatriz::default()).await;
     let operadores: Vec<_> = filas
@@ -59,7 +77,16 @@ async fn cargo_es_catalogo_compartido_y_composicion_por_servicio(pool: db::PgPoo
 }
 
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
-#[sqlx::test(migrations = false, fixtures("supabase_subset", "rls_test", "datos"))]
+#[sqlx::test(
+    migrations = false,
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "revision_matriz"
+    )
+)]
 async fn metricas_y_umbrales(pool: db::PgPool) {
     let filas = matriz(&pool, RRHH, FiltrosMatriz::default()).await;
     let op = filas
@@ -87,7 +114,16 @@ async fn metricas_y_umbrales(pool: db::PgPool) {
 }
 
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
-#[sqlx::test(migrations = false, fixtures("supabase_subset", "rls_test", "datos"))]
+#[sqlx::test(
+    migrations = false,
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "revision_matriz"
+    )
+)]
 async fn filtros(pool: db::PgPool) {
     let cargos = |v: Vec<FilaMatriz>| -> Vec<String> {
         v.into_iter()
@@ -126,7 +162,16 @@ async fn filtros(pool: db::PgPool) {
 }
 
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
-#[sqlx::test(migrations = false, fixtures("supabase_subset", "rls_test", "datos"))]
+#[sqlx::test(
+    migrations = false,
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "revision_matriz"
+    )
+)]
 async fn visibilidad_la_decide_rls(pool: db::PgPool) {
     assert_eq!(
         etiquetas(&matriz(&pool, COSTOS, FiltrosMatriz::default()).await),

@@ -192,6 +192,14 @@ fn protected_routes(state: AppState) -> Router<AppState> {
             put(configuracion::actualizar_metrica).delete(configuracion::quitar_metrica),
         )
         .route(
+            "/config/composicion-compartida",
+            get(configuracion::listar_compartidas),
+        )
+        .route(
+            "/config/composicion-compartida/{cargo_id}",
+            get(configuracion::obtener_compartida).put(configuracion::guardar_compartida),
+        )
+        .route(
             "/config/catalogo-metricas",
             get(configuracion::listar_metricas_catalogo)
                 .post(configuracion::crear_metrica_catalogo),

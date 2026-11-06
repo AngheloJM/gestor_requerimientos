@@ -11,6 +11,7 @@ pub mod ids;
 pub mod cargo;
 pub mod centro_costo;
 pub mod cliente;
+pub mod composicion_compartida;
 pub mod composicion_salarial;
 pub mod contrato_comercial;
 pub mod matriz;
@@ -42,8 +43,8 @@ pub use rol::{Rol, RolDesconocido};
 pub use roles::{DatosRol, Permiso, PermisoAsignado};
 pub use servicio::Servicio;
 pub use tablero::{
-    Area, Completitud, EstadoContrato, EstadoServicio, Indicadores, Kanban, ServicioConfigurado, ServicioIncompleto,
-    SolicitudCambio, TareaCompletitud,
+    Area, Completitud, EstadoContrato, EstadoServicio, Indicadores, Kanban, ServicioConfigurado,
+    ServicioIncompleto, SolicitudCambio, TareaCompletitud,
 };
 
 /// Montos de dinero: decimal exacto (nunca f64).

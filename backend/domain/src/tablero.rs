@@ -306,7 +306,11 @@ mod tests {
         );
         assert_eq!(c.configurados.len(), 1);
         assert_eq!(c.configurados[0].servicio_nombre, "ok");
-        let pct: Vec<_> = c.incompletos.iter().map(|i| i.porcentaje_completitud()).collect();
+        let pct: Vec<_> = c
+            .incompletos
+            .iter()
+            .map(|i| i.porcentaje_completitud())
+            .collect();
         assert_eq!(pct, vec![50, 50, 50, 50]);
         let codigos: Vec<_> = c
             .incompletos

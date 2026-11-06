@@ -22,6 +22,8 @@ SELECT
     sc.id                              AS servicio_cargo_id,
     sc.haber_basico_diurno::numeric    AS haber_basico_diurno,
     sc.haber_basico_nocturno::numeric  AS haber_basico_nocturno,
+    sc.cantidad_mujeres::int4          AS cantidad_mujeres,
+    sc.cantidad_hombres::int4          AS cantidad_hombres,
     s.id               AS servicio_id,
     s.codigo::text     AS servicio_codigo,
     s.nombre::text     AS servicio_nombre,
@@ -83,6 +85,8 @@ struct FilaRow {
     servicio_cargo_id: Uuid,
     haber_basico_diurno: Decimal,
     haber_basico_nocturno: Option<Decimal>,
+    cantidad_mujeres: Option<i32>,
+    cantidad_hombres: Option<i32>,
     servicio_id: Uuid,
     servicio_codigo: Option<String>,
     servicio_nombre: String,
@@ -231,6 +235,8 @@ pub async fn listar_matriz(
                 cargo_id: r.cargo_id.into(),
                 haber_basico_diurno: r.haber_basico_diurno,
                 haber_basico_nocturno: r.haber_basico_nocturno,
+                cantidad_mujeres: r.cantidad_mujeres,
+                cantidad_hombres: r.cantidad_hombres,
                 metricas: metricas_por_sc
                     .remove(&r.servicio_cargo_id)
                     .unwrap_or_default(),

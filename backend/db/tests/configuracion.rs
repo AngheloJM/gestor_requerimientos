@@ -39,13 +39,22 @@ fn servicio(
         capacitacion_pagada: true,
         tiene_refrigerio: false,
         activo: true,
+        tiempo_ojt_dias: None,
+        tiempo_capacitacion_ajustada_dias: None,
     }
 }
 
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
 #[sqlx::test(
     migrations = false,
-    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_matriz")
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_matriz",
+        "revision_matriz"
+    )
 )]
 async fn clientes_proyectos_y_servicios(pool: db::PgPool) {
     let mut tx = como(&pool, RRHH).await;
@@ -196,7 +205,14 @@ async fn clientes_proyectos_y_servicios(pool: db::PgPool) {
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
 #[sqlx::test(
     migrations = false,
-    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_matriz")
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_matriz",
+        "revision_matriz"
+    )
 )]
 async fn contratos_centros_cargos_y_catalogos(pool: db::PgPool) {
     let contrato =
@@ -208,6 +224,8 @@ async fn contratos_centros_cargos_y_catalogos(pool: db::PgPool) {
             fecha_fin: fin,
             duracion_valor: valor,
             duracion_unidad: unidad.map(Into::into),
+            tiempo_renovacion_valor: None,
+            tiempo_renovacion_unidad: None,
         };
     let mut tx = como(&pool, RRHH).await;
     assert_eq!(
@@ -326,7 +344,14 @@ async fn contratos_centros_cargos_y_catalogos(pool: db::PgPool) {
 #[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
 #[sqlx::test(
     migrations = false,
-    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion", "p2_matriz")
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_matriz",
+        "revision_matriz"
+    )
 )]
 async fn composicion_metricas_y_escalas(pool: db::PgPool) {
     let mut tx = como(&pool, RRHH).await;
@@ -342,6 +367,8 @@ async fn composicion_metricas_y_escalas(pool: db::PgPool) {
     let datos = cfg::DatosComposicion {
         haber_basico_diurno: dec!(3200),
         haber_basico_nocturno: Some(dec!(0)),
+        cantidad_mujeres: Some(3),
+        cantidad_hombres: Some(2),
     };
     let sc = cfg::crear_composicion(&mut tx, uid(CALL_CENTER), cargo, &datos)
         .await
@@ -364,7 +391,9 @@ async fn composicion_metricas_y_escalas(pool: db::PgPool) {
             sc,
             &cfg::DatosComposicion {
                 haber_basico_diurno: dec!(3300),
-                haber_basico_nocturno: None
+                haber_basico_nocturno: None,
+                cantidad_mujeres: None,
+                cantidad_hombres: None,
             }
         )
         .await
@@ -425,5 +454,86 @@ async fn composicion_metricas_y_escalas(pool: db::PgPool) {
             .await
             .unwrap(),
         0
+    );
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_matriz",
+        "revision_matriz"
+    )
+)]
+async fn composicion_compartida_por_centros(pool: db::PgPool) {
+    use domain::composicion_compartida::MontoCentro;
+    const OPERADOR: &str = "00000000-0000-0000-0000-000000000062"; // Call center (CC-01) y Campo (CC-02)
+    const TECNICO: &str = "00000000-0000-0000-0000-000000000061"; // solo Soporte (CC-01)
+    const CC1: &str = "00000000-0000-0000-0000-0000000000c1";
+    const CC2: &str = "00000000-0000-0000-0000-0000000000c2";
+
+    let mut tx = como(&pool, RRHH).await;
+    assert_eq!(
+        cfg::centros_posibles(&mut tx, uid(OPERADOR))
+            .await
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        cfg::centros_posibles(&mut tx, uid(TECNICO))
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+    let pares = [
+        MontoCentro {
+            centro_costo_id: uid(CC1),
+            monto: dec!(3000),
+        },
+        MontoCentro {
+            centro_costo_id: uid(CC2),
+            monto: dec!(1000),
+        },
+    ];
+    cfg::guardar_distribucion(&mut tx, uid(OPERADOR), &pares)
+        .await
+        .unwrap();
+    // Reemplaza (no duplica) al volver a guardar.
+    cfg::guardar_distribucion(&mut tx, uid(OPERADOR), &pares)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let mut tx = como(&pool, RRHH).await;
+    let d = cfg::distribucion(&mut tx, uid(OPERADOR)).await.unwrap();
+    assert_eq!(d.len(), 2);
+    assert_eq!(
+        d.iter().map(|x| x.monto).sum::<rust_decimal::Decimal>(),
+        dec!(4000)
+    );
+    assert_eq!(
+        cfg::cargos_con_distribucion(&mut tx).await.unwrap().len(),
+        1
+    );
+    drop(tx);
+
+    // RLS: fuera de RR.HH. no se ve ni se escribe.
+    let mut tx = como(&pool, ESTANDAR).await;
+    assert!(
+        cfg::distribucion(&mut tx, uid(OPERADOR))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        cfg::guardar_distribucion(&mut tx, uid(TECNICO), &pares)
+            .await
+            .is_err()
     );
 }

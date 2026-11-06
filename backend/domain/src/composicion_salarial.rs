@@ -58,6 +58,9 @@ pub struct ComposicionSalarial {
     pub cargo_id: CargoId,
     pub haber_basico_diurno: Decimal,
     pub haber_basico_nocturno: Option<Decimal>,
+    /// A confirmar: cantidades por cargo del servicio (migración 0004).
+    pub cantidad_mujeres: Option<i32>,
+    pub cantidad_hombres: Option<i32>,
     pub metricas: Vec<MetricaBono>,
 }
 
@@ -132,6 +135,8 @@ mod tests {
             cargo_id: CargoId::new(),
             haber_basico_diurno: dec!(3000.00),
             haber_basico_nocturno: None,
+            cantidad_mujeres: None,
+            cantidad_hombres: None,
             metricas: vec![],
         };
         assert_eq!(c.total_haberes(), dec!(3000.00));
@@ -152,6 +157,8 @@ mod tests {
         };
         let c = ComposicionSalarial {
             haber_basico_nocturno: Some(dec!(500.50)),
+            cantidad_mujeres: None,
+            cantidad_hombres: None,
             metricas: vec![bono(dec!(200)), bono(dec!(100))],
             ..c
         };
@@ -161,6 +168,8 @@ mod tests {
         let real = ComposicionSalarial {
             haber_basico_diurno: dec!(2800),
             haber_basico_nocturno: Some(dec!(0)),
+            cantidad_mujeres: None,
+            cantidad_hombres: None,
             metricas: vec![bono(dec!(150))],
             ..c
         };

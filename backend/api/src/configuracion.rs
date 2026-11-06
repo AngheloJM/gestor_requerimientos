@@ -295,6 +295,16 @@ fn validar_servicio(d: cfg::DatosServicio) -> Result<cfg::DatosServicio, ApiErro
     {
         return Err(invalido("tiempo de capacitación: entre 0 y 3650 días"));
     }
+    if d.tiempo_ojt_dias.is_some_and(|v| !(0..=3650).contains(&v)) {
+        return Err(invalido("tiempo de OJT: entre 0 y 3650 días"));
+    }
+    if d.tiempo_capacitacion_ajustada_dias
+        .is_some_and(|v| !(0..=3650).contains(&v))
+    {
+        return Err(invalido(
+            "tiempo de capacitación ajustada: entre 0 y 3650 días",
+        ));
+    }
     Ok(cfg::DatosServicio {
         codigo: opcional("código", &d.codigo, 60)?,
         nombre: requerido("nombre", &d.nombre, 200)?,
@@ -469,10 +479,22 @@ fn validar_contrato(d: cfg::DatosContrato) -> Result<cfg::DatosContrato, ApiErro
             return Err(invalido("la unidad de duración debe ser meses o dias"));
         }
     }
+    // Tiempo de renovación: opcional; si se carga, valor positivo + unidad.
+    let renov_unidad = d.tiempo_renovacion_unidad.filter(|u| !u.is_empty());
+    match (d.tiempo_renovacion_valor, renov_unidad.as_deref()) {
+        (None, None) => {}
+        (Some(v), Some(u)) if v > 0 && UNIDADES_DURACION.contains(&u) => {}
+        _ => {
+            return Err(invalido(
+                "tiempo de renovación: indicá un número positivo y la unidad (meses o dias), o dejalo vacío",
+            ));
+        }
+    }
     Ok(cfg::DatosContrato {
         codigo: requerido("código", &d.codigo, 60)?,
         nombre: opcional("nombre", &d.nombre, 200)?,
         duracion_unidad: unidad,
+        tiempo_renovacion_unidad: renov_unidad,
         ..d
     })
 }
@@ -534,15 +556,28 @@ pub struct NuevaComposicion {
     pub cargo_id: Uuid,
     pub haber_basico_diurno: Decimal,
     pub haber_basico_nocturno: Option<Decimal>,
+    #[serde(default)]
+    pub cantidad_mujeres: Option<i32>,
+    #[serde(default)]
+    pub cantidad_hombres: Option<i32>,
 }
 
 fn validar_montos(d: cfg::DatosComposicion) -> Result<cfg::DatosComposicion, ApiError> {
+    for (campo, v) in [
+        ("cantidad de mujeres", d.cantidad_mujeres),
+        ("cantidad de hombres", d.cantidad_hombres),
+    ] {
+        if v.is_some_and(|n| n < 0) {
+            return Err(invalido(format!("{campo}: no puede ser negativa")));
+        }
+    }
     Ok(cfg::DatosComposicion {
         haber_basico_diurno: no_negativo("haber básico diurno", d.haber_basico_diurno)?,
         haber_basico_nocturno: d
             .haber_basico_nocturno
             .map(|v| no_negativo("haber básico nocturno", v))
             .transpose()?,
+        ..d
     })
 }
 
@@ -554,6 +589,8 @@ pub async fn crear_composicion(
     let d = validar_montos(cfg::DatosComposicion {
         haber_basico_diurno: b.haber_basico_diurno,
         haber_basico_nocturno: b.haber_basico_nocturno,
+        cantidad_mujeres: b.cantidad_mujeres,
+        cantidad_hombres: b.cantidad_hombres,
     })?;
     let mut tx = tx!(pool, user);
     let id = cfg::crear_composicion(&mut tx, b.servicio_id, b.cargo_id, &d)
@@ -760,6 +797,136 @@ pub async fn actualizar_bono(
     Ok(r)
 }
 
+// --- Composición compartida (cargo en varios centros de costo) ------------------------------
+
+#[derive(Debug, Serialize)]
+pub struct MontoCentroDto {
+    pub centro_costo_id: Uuid,
+    pub centro_costo_nombre: String,
+    pub monto: Decimal,
+    /// % sobre el total (2 decimales).
+    pub porcentaje: Decimal,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ComposicionCompartidaDto {
+    pub cargo_id: Uuid,
+    /// Solo en el listado.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cargo_nombre: Option<String>,
+    /// Centros de los servicios activos donde está el cargo. Con menos de 2, no se puede guardar.
+    pub centros_posibles: Vec<cfg::CentroRef>,
+    pub compartido: bool,
+    pub distribucion: Vec<MontoCentroDto>,
+    pub total: Decimal,
+}
+
+async fn armar_compartida(
+    tx: &mut sqlx::PgConnection,
+    cargo_id: Uuid,
+) -> ApiResult<ComposicionCompartidaDto> {
+    use domain::composicion_compartida::{self as cc, MontoCentro};
+    let posibles = cfg::centros_posibles(tx, cargo_id).await?;
+    let filas = cfg::distribucion(tx, cargo_id).await?;
+    let pares: Vec<MontoCentro> = filas
+        .iter()
+        .map(|f| MontoCentro {
+            centro_costo_id: f.centro_costo_id,
+            monto: f.monto,
+        })
+        .collect();
+    let pct = cc::porcentajes(&pares);
+    Ok(ComposicionCompartidaDto {
+        cargo_id,
+        cargo_nombre: None,
+        compartido: posibles.len() >= cc::MIN_CENTROS,
+        centros_posibles: posibles,
+        total: cc::total(&pares),
+        distribucion: filas
+            .into_iter()
+            .zip(pct)
+            .map(|(f, porcentaje)| MontoCentroDto {
+                centro_costo_id: f.centro_costo_id,
+                centro_costo_nombre: f.centro_costo_nombre,
+                monto: f.monto,
+                porcentaje,
+            })
+            .collect(),
+    })
+}
+
+/// GET /config/composicion-compartida → cargos con distribución cargada.
+pub async fn listar_compartidas(
+    State(pool): State<PgPool>,
+    user: AuthUser,
+) -> ApiResult<Json<Vec<ComposicionCompartidaDto>>> {
+    let mut tx = tx!(pool, user);
+    let cargos = cfg::cargos_con_distribucion(&mut tx).await?;
+    let mut v = Vec::with_capacity(cargos.len());
+    for c in cargos {
+        let mut d = armar_compartida(&mut tx, c.id).await?;
+        d.cargo_nombre = Some(c.nombre);
+        v.push(d);
+    }
+    Ok(Json(v))
+}
+
+pub async fn obtener_compartida(
+    State(pool): State<PgPool>,
+    user: AuthUser,
+    Path(cargo_id): Path<Uuid>,
+) -> ApiResult<Json<ComposicionCompartidaDto>> {
+    let mut tx = tx!(pool, user);
+    Ok(Json(armar_compartida(&mut tx, cargo_id).await?))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ParMontoCentro {
+    pub centro_costo_id: Uuid,
+    pub monto: Decimal,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GuardarCompartida {
+    /// Vacío = quitar la distribución del cargo.
+    pub centros: Vec<ParMontoCentro>,
+}
+
+/// PUT /config/composicion-compartida/{cargo_id}: reemplaza la distribución completa.
+pub async fn guardar_compartida(
+    State(pool): State<PgPool>,
+    user: AuthUser,
+    Path(cargo_id): Path<Uuid>,
+    Json(b): Json<GuardarCompartida>,
+) -> ApiResult<Json<ComposicionCompartidaDto>> {
+    use domain::composicion_compartida::{self as cc, MontoCentro};
+    let pares: Vec<MontoCentro> = b
+        .centros
+        .iter()
+        .map(|p| MontoCentro {
+            centro_costo_id: p.centro_costo_id,
+            monto: p.monto,
+        })
+        .collect();
+    let mut tx = tx!(pool, user);
+    if !pares.is_empty() {
+        let posibles: Vec<Uuid> = cfg::centros_posibles(&mut tx, cargo_id)
+            .await?
+            .into_iter()
+            .map(|c| c.id)
+            .collect();
+        cc::validar(&posibles, &pares).map_err(|e| invalido(e.mensaje()))?;
+    }
+    cfg::guardar_distribucion(&mut tx, cargo_id, &pares)
+        .await
+        .map_err(error)?;
+    let dto = armar_compartida(&mut tx, cargo_id).await?;
+    tx.commit().await?;
+    Ok(Json(dto))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -774,7 +941,24 @@ mod tests {
             fecha_fin: fin.then(|| NaiveDate::from_ymd_opt(2026, 12, 31).unwrap()),
             duracion_valor: valor,
             duracion_unidad: unidad.map(Into::into),
+            tiempo_renovacion_valor: None,
+            tiempo_renovacion_unidad: None,
         }
+    }
+
+    #[test]
+    fn contrato_tiempo_de_renovacion_opcional() {
+        let con = |v: Option<i32>, u: Option<&str>| cfg::DatosContrato {
+            tiempo_renovacion_valor: v,
+            tiempo_renovacion_unidad: u.map(Into::into),
+            ..contrato(true, None, None)
+        };
+        assert!(validar_contrato(con(None, None)).is_ok());
+        assert!(validar_contrato(con(None, Some(""))).is_ok());
+        assert!(validar_contrato(con(Some(3), Some("meses"))).is_ok());
+        assert!(validar_contrato(con(Some(3), None)).is_err());
+        assert!(validar_contrato(con(Some(0), Some("meses"))).is_err());
+        assert!(validar_contrato(con(Some(3), Some("años"))).is_err());
     }
 
     #[test]

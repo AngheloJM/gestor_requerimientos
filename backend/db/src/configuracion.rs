@@ -203,6 +203,8 @@ pub struct ServicioConfig {
     pub departamento_region: Option<String>,
     pub manual_funciones_codigo: Option<String>,
     pub tiempo_capacitacion_dias: Option<i32>,
+    pub tiempo_ojt_dias: Option<i32>,
+    pub tiempo_capacitacion_ajustada_dias: Option<i32>,
     pub capacitacion_pagada: Option<bool>,
     pub tiene_refrigerio: Option<bool>,
     pub activo: bool,
@@ -225,6 +227,10 @@ pub struct DatosServicio {
     pub departamento_region: Option<String>,
     pub manual_funciones_codigo: Option<String>,
     pub tiempo_capacitacion_dias: Option<i32>,
+    #[serde(default)]
+    pub tiempo_ojt_dias: Option<i32>,
+    #[serde(default)]
+    pub tiempo_capacitacion_ajustada_dias: Option<i32>,
     pub capacitacion_pagada: bool,
     pub tiene_refrigerio: bool,
     pub activo: bool,
@@ -237,7 +243,8 @@ pub async fn listar_servicios(conn: &mut PgConnection) -> R<Vec<ServicioConfig>>
                 s.contrato_comercial_id, coalesce(k.nombre, k.codigo) AS contrato_nombre,
                 s.cliente_id, cl.nombre AS cliente_nombre, s.proyecto_id, p.nombre AS proyecto_nombre,
                 s.tipo_contrato, s.modalidad, s.tipo_turno, s.dias_trabajo, s.departamento_region,
-                s.manual_funciones_codigo, s.tiempo_capacitacion_dias, s.capacitacion_pagada,
+                s.manual_funciones_codigo, s.tiempo_capacitacion_dias, s.tiempo_ojt_dias,
+                s.tiempo_capacitacion_ajustada_dias, s.capacitacion_pagada,
                 s.tiene_refrigerio, s.activo
          FROM servicios s
          LEFT JOIN centros_costo cc ON cc.id = s.centro_costo_id
@@ -270,34 +277,20 @@ fn bind_servicio<'q>(
         .bind(d.capacitacion_pagada)
         .bind(d.tiene_refrigerio)
         .bind(d.activo)
+        .bind(d.tiempo_ojt_dias)
+        .bind(d.tiempo_capacitacion_ajustada_dias)
 }
 
 pub async fn crear_servicio(conn: &mut PgConnection, d: &DatosServicio) -> R<Uuid> {
-    let fila: (Uuid,) = sqlx::query_as(
+    let q = sqlx::query(
         "INSERT INTO servicios (codigo, nombre, centro_costo_id, contrato_comercial_id, cliente_id, proyecto_id,
             tipo_contrato, modalidad, tipo_turno, dias_trabajo, departamento_region, manual_funciones_codigo,
-            tiempo_capacitacion_dias, capacitacion_pagada, tiene_refrigerio, activo)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id",
-    )
-    .bind(&d.codigo)
-    .bind(&d.nombre)
-    .bind(d.centro_costo_id)
-    .bind(d.contrato_comercial_id)
-    .bind(d.cliente_id)
-    .bind(d.proyecto_id)
-    .bind(&d.tipo_contrato)
-    .bind(&d.modalidad)
-    .bind(&d.tipo_turno)
-    .bind(&d.dias_trabajo)
-    .bind(&d.departamento_region)
-    .bind(&d.manual_funciones_codigo)
-    .bind(d.tiempo_capacitacion_dias)
-    .bind(d.capacitacion_pagada)
-    .bind(d.tiene_refrigerio)
-    .bind(d.activo)
-    .fetch_one(conn)
-    .await?;
-    Ok(fila.0)
+            tiempo_capacitacion_dias, capacitacion_pagada, tiene_refrigerio, activo,
+            tiempo_ojt_dias, tiempo_capacitacion_ajustada_dias)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id",
+    );
+    let fila = bind_servicio(q, d).fetch_one(conn).await?;
+    Ok(sqlx::Row::try_get(&fila, 0)?)
 }
 
 pub async fn actualizar_servicio(conn: &mut PgConnection, id: Uuid, d: &DatosServicio) -> R<u64> {
@@ -305,8 +298,9 @@ pub async fn actualizar_servicio(conn: &mut PgConnection, id: Uuid, d: &DatosSer
         "UPDATE servicios SET codigo = $1, nombre = $2, centro_costo_id = $3, contrato_comercial_id = $4,
             cliente_id = $5, proyecto_id = $6, tipo_contrato = $7, modalidad = $8, tipo_turno = $9,
             dias_trabajo = $10, departamento_region = $11, manual_funciones_codigo = $12,
-            tiempo_capacitacion_dias = $13, capacitacion_pagada = $14, tiene_refrigerio = $15, activo = $16
-         WHERE id = $17",
+            tiempo_capacitacion_dias = $13, capacitacion_pagada = $14, tiene_refrigerio = $15, activo = $16,
+            tiempo_ojt_dias = $17, tiempo_capacitacion_ajustada_dias = $18
+         WHERE id = $19",
     );
     filas(bind_servicio(q, d).bind(id), conn).await
 }
@@ -393,6 +387,10 @@ pub async fn eliminar_cargo(conn: &mut PgConnection, id: Uuid) -> R<u64> {
 pub struct DatosComposicion {
     pub haber_basico_diurno: Decimal,
     pub haber_basico_nocturno: Option<Decimal>,
+    #[serde(default)]
+    pub cantidad_mujeres: Option<i32>,
+    #[serde(default)]
+    pub cantidad_hombres: Option<i32>,
 }
 
 pub async fn crear_composicion(
@@ -402,13 +400,16 @@ pub async fn crear_composicion(
     d: &DatosComposicion,
 ) -> R<Uuid> {
     Ok(sqlx::query_scalar(
-        "INSERT INTO servicio_cargos (servicio_id, cargo_id, haber_basico_diurno, haber_basico_nocturno)
-         VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO servicio_cargos (servicio_id, cargo_id, haber_basico_diurno, haber_basico_nocturno,
+            cantidad_mujeres, cantidad_hombres)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
     )
     .bind(servicio_id)
     .bind(cargo_id)
     .bind(d.haber_basico_diurno)
     .bind(d.haber_basico_nocturno)
+    .bind(d.cantidad_mujeres)
+    .bind(d.cantidad_hombres)
     .fetch_one(conn)
     .await?)
 }
@@ -419,10 +420,15 @@ pub async fn actualizar_composicion(
     d: &DatosComposicion,
 ) -> R<u64> {
     filas(
-        sqlx::query("UPDATE servicio_cargos SET haber_basico_diurno = $2, haber_basico_nocturno = $3 WHERE id = $1")
-            .bind(id)
-            .bind(d.haber_basico_diurno)
-            .bind(d.haber_basico_nocturno),
+        sqlx::query(
+            "UPDATE servicio_cargos SET haber_basico_diurno = $2, haber_basico_nocturno = $3,
+                cantidad_mujeres = $4, cantidad_hombres = $5 WHERE id = $1",
+        )
+        .bind(id)
+        .bind(d.haber_basico_diurno)
+        .bind(d.haber_basico_nocturno)
+        .bind(d.cantidad_mujeres)
+        .bind(d.cantidad_hombres),
         conn,
     )
     .await
@@ -441,6 +447,8 @@ pub struct Contrato {
     pub fecha_fin: Option<NaiveDate>,
     pub duracion_valor: Option<i32>,
     pub duracion_unidad: Option<String>,
+    pub tiempo_renovacion_valor: Option<i32>,
+    pub tiempo_renovacion_unidad: Option<String>,
 }
 
 /// `fecha_fin` y (`duracion_valor` + `duracion_unidad`) son alternativas (trigger de la base:
@@ -454,12 +462,18 @@ pub struct DatosContrato {
     pub fecha_fin: Option<NaiveDate>,
     pub duracion_valor: Option<i32>,
     pub duracion_unidad: Option<String>,
+    /// Opcional: cuánto antes del vencimiento empezar a renegociar (`meses` | `dias`).
+    #[serde(default)]
+    pub tiempo_renovacion_valor: Option<i32>,
+    #[serde(default)]
+    pub tiempo_renovacion_unidad: Option<String>,
 }
 
 pub async fn listar_contratos(conn: &mut PgConnection) -> R<Vec<Contrato>> {
     Ok(sqlx::query_as(
         "SELECT k.id, k.codigo, k.nombre, k.cliente_id, c.nombre AS cliente_nombre, k.fecha_inicio,
-                k.fecha_fin, k.duracion_valor, k.duracion_unidad
+                k.fecha_fin, k.duracion_valor, k.duracion_unidad,
+                k.tiempo_renovacion_valor, k.tiempo_renovacion_unidad
          FROM contratos_comerciales k LEFT JOIN clientes c ON c.id = k.cliente_id
          ORDER BY k.codigo",
     )
@@ -469,8 +483,9 @@ pub async fn listar_contratos(conn: &mut PgConnection) -> R<Vec<Contrato>> {
 
 pub async fn crear_contrato(conn: &mut PgConnection, d: &DatosContrato) -> R<Uuid> {
     Ok(sqlx::query_scalar(
-        "INSERT INTO contratos_comerciales (codigo, nombre, cliente_id, fecha_inicio, fecha_fin, duracion_valor, duracion_unidad)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+        "INSERT INTO contratos_comerciales (codigo, nombre, cliente_id, fecha_inicio, fecha_fin, duracion_valor,
+            duracion_unidad, tiempo_renovacion_valor, tiempo_renovacion_unidad)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
     )
     .bind(&d.codigo)
     .bind(&d.nombre)
@@ -479,6 +494,8 @@ pub async fn crear_contrato(conn: &mut PgConnection, d: &DatosContrato) -> R<Uui
     .bind(d.fecha_fin)
     .bind(d.duracion_valor)
     .bind(&d.duracion_unidad)
+    .bind(d.tiempo_renovacion_valor)
+    .bind(&d.tiempo_renovacion_unidad)
     .fetch_one(conn)
     .await?)
 }
@@ -487,7 +504,8 @@ pub async fn actualizar_contrato(conn: &mut PgConnection, id: Uuid, d: &DatosCon
     filas(
         sqlx::query(
             "UPDATE contratos_comerciales SET codigo = $2, nombre = $3, cliente_id = $4, fecha_inicio = $5,
-                fecha_fin = $6, duracion_valor = $7, duracion_unidad = $8 WHERE id = $1",
+                fecha_fin = $6, duracion_valor = $7, duracion_unidad = $8,
+                tiempo_renovacion_valor = $9, tiempo_renovacion_unidad = $10 WHERE id = $1",
         )
         .bind(id)
         .bind(&d.codigo)
@@ -496,7 +514,9 @@ pub async fn actualizar_contrato(conn: &mut PgConnection, id: Uuid, d: &DatosCon
         .bind(d.fecha_inicio)
         .bind(d.fecha_fin)
         .bind(d.duracion_valor)
-        .bind(&d.duracion_unidad),
+        .bind(&d.duracion_unidad)
+        .bind(d.tiempo_renovacion_valor)
+        .bind(&d.tiempo_renovacion_unidad),
         conn,
     )
     .await
@@ -733,4 +753,78 @@ pub async fn actualizar_bono(conn: &mut PgConnection, id: Uuid, nombre: &str) ->
         conn,
     )
     .await
+}
+
+// --- 8. Composición compartida (cargo en varios centros de costo) -------------------------
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct CentroRef {
+    pub id: Uuid,
+    pub nombre: String,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct MontoCentroConfig {
+    pub centro_costo_id: Uuid,
+    pub centro_costo_nombre: String,
+    pub monto: Decimal,
+}
+
+/// Centros de costo de los servicios **activos** donde está asignado el cargo.
+pub async fn centros_posibles(conn: &mut PgConnection, cargo_id: Uuid) -> R<Vec<CentroRef>> {
+    Ok(sqlx::query_as(
+        "SELECT DISTINCT cc.id, cc.codigo || ' · ' || cc.nombre AS nombre
+         FROM servicio_cargos sc
+         JOIN servicios s      ON s.id = sc.servicio_id AND s.activo = true
+         JOIN centros_costo cc ON cc.id = s.centro_costo_id
+         WHERE sc.cargo_id = $1
+         ORDER BY 2",
+    )
+    .bind(cargo_id)
+    .fetch_all(conn)
+    .await?)
+}
+
+pub async fn distribucion(conn: &mut PgConnection, cargo_id: Uuid) -> R<Vec<MontoCentroConfig>> {
+    Ok(sqlx::query_as(
+        "SELECT x.centro_costo_id, cc.codigo || ' · ' || cc.nombre AS centro_costo_nombre, x.monto
+         FROM cargo_centros_costo x JOIN centros_costo cc ON cc.id = x.centro_costo_id
+         WHERE x.cargo_id = $1
+         ORDER BY x.created_at, 2",
+    )
+    .bind(cargo_id)
+    .fetch_all(conn)
+    .await?)
+}
+
+/// Reemplaza la distribución completa del cargo (vacía = la quita). Validar antes.
+pub async fn guardar_distribucion(
+    conn: &mut PgConnection,
+    cargo_id: Uuid,
+    pares: &[domain::composicion_compartida::MontoCentro],
+) -> R<()> {
+    sqlx::query("DELETE FROM cargo_centros_costo WHERE cargo_id = $1")
+        .bind(cargo_id)
+        .execute(&mut *conn)
+        .await?;
+    for p in pares {
+        sqlx::query(
+            "INSERT INTO cargo_centros_costo (cargo_id, centro_costo_id, monto) VALUES ($1, $2, $3)",
+        )
+        .bind(cargo_id)
+        .bind(p.centro_costo_id)
+        .bind(p.monto)
+        .execute(&mut *conn)
+        .await?;
+    }
+    Ok(())
+}
+
+/// Cargos que ya tienen distribución por centros de costo.
+pub async fn cargos_con_distribucion(conn: &mut PgConnection) -> R<Vec<CentroRef>> {
+    Ok(sqlx::query_as(
+        "SELECT DISTINCT c.id, c.nombre FROM cargo_centros_costo x JOIN cargos c ON c.id = x.cargo_id ORDER BY 2",
+    )
+    .fetch_all(conn)
+    .await?)
 }
