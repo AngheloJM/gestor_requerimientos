@@ -325,9 +325,16 @@ export interface EntradaHistorial {
 // GET /tablero
 export type Area = 'comercial' | 'operaciones' | 'rrhh'
 
+export interface ServicioConfigurado {
+  servicio: Ref
+  cliente: string | null
+}
+
 export interface ServicioIncompleto {
   servicio: Ref
   cliente: string | null
+  /** % de criterios de completitud cumplidos (0–100). */
+  porcentaje: number
   tareas: { codigo: string; area: Area }[]
 }
 
@@ -356,6 +363,7 @@ export interface Tablero {
   }
   /** Criterios de completitud aún no evaluados (pendientes de definición). */
   criterios_sin_definir: string[]
+  servicios_configurados: ServicioConfigurado[]
   servicios_incompletos: ServicioIncompleto[]
   /** Kanban desde solicitudes_cambio. */
   kanban: Record<Area, TarjetaKanban[]>

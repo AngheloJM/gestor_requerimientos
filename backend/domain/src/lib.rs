@@ -42,7 +42,7 @@ pub use rol::{Rol, RolDesconocido};
 pub use roles::{DatosRol, Permiso, PermisoAsignado};
 pub use servicio::Servicio;
 pub use tablero::{
-    Area, Completitud, EstadoContrato, EstadoServicio, Indicadores, Kanban, ServicioIncompleto,
+    Area, Completitud, EstadoContrato, EstadoServicio, Indicadores, Kanban, ServicioConfigurado, ServicioIncompleto,
     SolicitudCambio, TareaCompletitud,
 };
 

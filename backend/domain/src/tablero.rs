@@ -124,19 +124,49 @@ pub struct ServicioIncompleto {
     pub tareas: Vec<TareaCompletitud>,
 }
 
+/// Criterios que hoy se evalúan por servicio: (1) contrato comercial vigente y (2) cargos
+/// definidos. Las tareas de contrato son excluyentes entre sí, así que cada tarea pendiente
+/// equivale a un criterio incumplido.
+/// SUPUESTO (a confirmar): todos los criterios pesan igual en el % de completitud.
+pub const CRITERIOS_EVALUADOS: u32 = 2;
+
+impl ServicioIncompleto {
+    /// % de criterios cumplidos (0–100), redondeado hacia abajo.
+    pub fn porcentaje_completitud(&self) -> u32 {
+        let pendientes = u32::try_from(self.tareas.len()).unwrap_or(u32::MAX);
+        CRITERIOS_EVALUADOS.saturating_sub(pendientes) * 100 / CRITERIOS_EVALUADOS
+    }
+}
+
+/// Servicio activo sin tareas pendientes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServicioConfigurado {
+    pub servicio_id: ServicioId,
+    pub servicio_nombre: String,
+    pub cliente_nombre: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Completitud {
     pub indicadores: Indicadores,
+    pub configurados: Vec<ServicioConfigurado>,
     pub incompletos: Vec<ServicioIncompleto>,
 }
 
 impl Completitud {
     pub fn construir(servicios: &[EstadoServicio], hoy: NaiveDate) -> Self {
         let mut incompletos = Vec::new();
+        let mut configurados = Vec::new();
         let mut areas = std::collections::BTreeSet::new();
         for s in servicios {
             let tareas = s.pendientes(hoy);
-            if !tareas.is_empty() {
+            if tareas.is_empty() {
+                configurados.push(ServicioConfigurado {
+                    servicio_id: s.servicio_id,
+                    servicio_nombre: s.servicio_nombre.clone(),
+                    cliente_nombre: s.cliente_nombre.clone(),
+                });
+            } else {
                 areas.extend(tareas.iter().map(|t| t.area()));
                 incompletos.push(ServicioIncompleto {
                     servicio_id: s.servicio_id,
@@ -155,6 +185,7 @@ impl Completitud {
                 servicios_incompletos: n_incompletos,
                 areas_sin_completar: u32::try_from(areas.len()).unwrap_or(3),
             },
+            configurados,
             incompletos,
         }
     }
@@ -273,6 +304,10 @@ mod tests {
                 areas_sin_completar: 2,
             }
         );
+        assert_eq!(c.configurados.len(), 1);
+        assert_eq!(c.configurados[0].servicio_nombre, "ok");
+        let pct: Vec<_> = c.incompletos.iter().map(|i| i.porcentaje_completitud()).collect();
+        assert_eq!(pct, vec![50, 50, 50, 50]);
         let codigos: Vec<_> = c
             .incompletos
             .iter()

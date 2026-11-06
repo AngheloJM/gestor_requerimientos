@@ -30,6 +30,7 @@ pub struct TableroDto {
     pub indicadores: IndicadoresDto,
     /// Criterios de completitud aún no evaluados (pendientes de definición de negocio).
     pub criterios_sin_definir: &'static [&'static str],
+    pub servicios_configurados: Vec<ConfiguradoDto>,
     pub servicios_incompletos: Vec<IncompletoDto>,
     pub kanban: KanbanDto,
 }
@@ -49,9 +50,17 @@ pub struct TareaDto {
 }
 
 #[derive(Debug, Serialize)]
+pub struct ConfiguradoDto {
+    pub servicio: RefDto,
+    pub cliente: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct IncompletoDto {
     pub servicio: RefDto,
     pub cliente: Option<String>,
+    /// % de criterios de completitud cumplidos (0–100).
+    pub porcentaje: u32,
     pub tareas: Vec<TareaDto>,
 }
 
@@ -109,10 +118,19 @@ fn armar(c: Completitud, k: Kanban) -> TableroDto {
             areas_sin_completar: c.indicadores.areas_sin_completar,
         },
         criterios_sin_definir: CRITERIOS_SIN_DEFINIR,
+        servicios_configurados: c
+            .configurados
+            .into_iter()
+            .map(|s| ConfiguradoDto {
+                servicio: RefDto::new(s.servicio_id, Some(s.servicio_nombre)),
+                cliente: s.cliente_nombre,
+            })
+            .collect(),
         servicios_incompletos: c
             .incompletos
             .into_iter()
             .map(|i| IncompletoDto {
+                porcentaje: i.porcentaje_completitud(),
                 servicio: RefDto::new(i.servicio_id, Some(i.servicio_nombre)),
                 cliente: i.cliente_nombre,
                 tareas: i
