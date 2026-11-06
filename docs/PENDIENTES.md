@@ -185,12 +185,18 @@ A confirmar / TODO(negocio):
       opcional). Cambia `cantidad_personas` (actual); la original (`requerimiento_referencia`)
       no se toca; queda en `requerimiento_historial`. La base exige ≥ 1 y ≥ lo ya aceptado, y
       decide quién puede editar (`p2_acceso`).
-- [ ] A confirmar: "Reclutados informados" = suma de todas las entregas registradas (entregas y
-      rectificaciones, con o sin decisión).
+- [x] "Reclutados informados" = suma del **valor final de cada entrega**: su última
+      rectificación (`corrige_entrega_id`) o, si no tiene, la entrega original. No se suman
+      entrega + rectificaciones (decisión 2026-11-06, criterio de no duplicar).
+- [ ] TODO(negocio): pendiente de validar con Lourdes/Vanessa la semántica exacta de
+      rectificación para reclutados informados. Datos de la base de producción a considerar:
+      la rectificación puede ser **negativa** (CHECK `cantidad <> 0`), lo que sugiere un ajuste
+      (+/−) y no un reemplazo; solo puede corregir una entrega **aceptada**; y la entrega tiene
+      una columna `cantidad_reclutada` (vacía en las rectificaciones) que podría ser el dato de
+      "reclutados informados".
 - [ ] TODO(negocio): edición del motivo en el detalle (la base lo permite solo en pendiente).
-- [ ] Tiempos de capacitación congelados: la base congela solo `tiempo_capacitacion_snap` (del
-      servicio). Congelar los tres tiempos por cargo requiere columnas nuevas en `requerimientos`
-      y un trigger nuevo en producción (pendiente de confirmación).
+- [x] Tiempos de capacitación: el detalle del requerimiento **no** los muestra ni se congelan
+      (decisión 2026-11-06: los tres tiempos son solo configuración de Servicio → Cargo).
 
 - [x] Datos del solicitante y panel fijo "Datos del servicio" (centro de costo, cliente, contrato,
       tipo de contrato, modalidad, días, sueldo básico y bonos fijos), cada dato con

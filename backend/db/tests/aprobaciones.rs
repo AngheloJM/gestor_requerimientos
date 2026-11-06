@@ -310,6 +310,8 @@ async fn cantidad_actual_con_glosa_sin_tocar_la_original(pool: db::PgPool) {
         (d.cantidad, d.cantidad_original, d.total_aceptado),
         (Some(5), Some(3), 3)
     );
+    // Entrega 91 (3) rectificada por la 92 (2): cuenta el valor final, no 3 + 2.
+    assert_eq!(d.reclutados_informados, 2);
     let h = historial(&mut tx, req81()).await.unwrap().unwrap();
     let u = h.last().unwrap();
     assert_eq!(
