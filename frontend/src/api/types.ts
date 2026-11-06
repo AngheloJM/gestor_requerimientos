@@ -413,6 +413,8 @@ export interface ServicioIncompleto {
   cliente: string | null
   /** % de criterios de completitud cumplidos (0–100). */
   porcentaje: number
+  /** Contrato asignado (si es visible), para ir a corregirlo. */
+  contrato_id: Uuid | null
   tareas: { codigo: string; area: Area }[]
 }
 

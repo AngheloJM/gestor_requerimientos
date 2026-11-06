@@ -6,7 +6,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 
 use crate::{
-    CargoId, ContratoComercial, ServicioId, SolicitudCambioId, UsuarioId,
+    CargoId, ContratoComercial, ContratoComercialId, ServicioId, SolicitudCambioId, UsuarioId,
     contrato_comercial::Vigencia,
 };
 
@@ -121,6 +121,8 @@ pub struct ServicioIncompleto {
     pub servicio_id: ServicioId,
     pub servicio_nombre: String,
     pub cliente_nombre: Option<String>,
+    /// Contrato asignado (si es visible), para llevar a corregirlo desde el tablero.
+    pub contrato_id: Option<ContratoComercialId>,
     pub tareas: Vec<TareaCompletitud>,
 }
 
@@ -172,6 +174,10 @@ impl Completitud {
                     servicio_id: s.servicio_id,
                     servicio_nombre: s.servicio_nombre.clone(),
                     cliente_nombre: s.cliente_nombre.clone(),
+                    contrato_id: match &s.contrato {
+                        EstadoContrato::Con(c) => Some(c.id),
+                        _ => None,
+                    },
                     tareas,
                 });
             }

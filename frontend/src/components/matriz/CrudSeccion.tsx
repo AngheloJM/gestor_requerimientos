@@ -253,6 +253,7 @@ export function CrudSeccion<T>({
   permisos,
   nota,
   extraEdicion,
+  abrirId,
 }: {
   titulo: string
   /** Título del formulario de alta (por defecto "Nuevo · {titulo}"). */
@@ -273,6 +274,8 @@ export function CrudSeccion<T>({
   nota?: ReactNode
   /** Contenido adicional bajo el formulario al editar un registro existente. */
   extraEdicion?: (t: T) => ReactNode
+  /** Registro a abrir en edición al cargar (p. ej. al llegar desde el tablero con ?editar=<id>). */
+  abrirId?: string | null
 }) {
   const guardar = useConfigGuardar(recurso)
   const eliminar = useConfigEliminar(recurso)
@@ -284,6 +287,16 @@ export function CrudSeccion<T>({
     guardar.reset()
     setHecho(undefined)
     setEditando(t)
+  }
+
+  // Apertura pedida por la URL: se aplica una sola vez por id, apenas llegan las filas.
+  const [abiertoDesdeUrl, setAbiertoDesdeUrl] = useState<string | null>(null)
+  if (abrirId && permisos.editar && abiertoDesdeUrl !== abrirId) {
+    const t = filas?.find((f) => idDe(f) === abrirId)
+    if (t) {
+      setAbiertoDesdeUrl(abrirId)
+      setEditando(t)
+    }
   }
 
   return (

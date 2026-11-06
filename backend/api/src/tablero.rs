@@ -61,6 +61,7 @@ pub struct IncompletoDto {
     pub cliente: Option<String>,
     /// % de criterios de completitud cumplidos (0–100).
     pub porcentaje: u32,
+    pub contrato_id: Option<Uuid>,
     pub tareas: Vec<TareaDto>,
 }
 
@@ -133,6 +134,7 @@ fn armar(c: Completitud, k: Kanban) -> TableroDto {
                 porcentaje: i.porcentaje_completitud(),
                 servicio: RefDto::new(i.servicio_id, Some(i.servicio_nombre)),
                 cliente: i.cliente_nombre,
+                contrato_id: i.contrato_id.map(Into::into),
                 tareas: i
                     .tareas
                     .iter()

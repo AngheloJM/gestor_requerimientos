@@ -15,6 +15,7 @@ import { DEPARTAMENTOS } from '@/lib/catalogos'
 import { formatFecha } from '@/lib/format'
 
 type Permisos = { esRrhh: boolean }
+type ConApertura = Permisos & { abrirId?: string | null }
 const todo = (esRrhh: boolean) => ({ crear: esRrhh, editar: esRrhh, eliminar: esRrhh })
 const vacio = (v: string | null | undefined) => v || '—'
 const NUMERO_ENTERO = /^\d+$/
@@ -119,7 +120,7 @@ export function CentrosCosto({ esRrhh }: Permisos) {
 
 // --- 3. Servicios ----------------------------------------------------------------------
 
-export function Servicios({ esRrhh }: Permisos) {
+export function Servicios({ esRrhh, abrirId }: ConApertura) {
   const q = useConfigLista<ServicioCfg>('servicios')
   const centros = useConfigLista<CentroCostoCfg>('centros-costo')
   const contratos = useConfigLista<ContratoCfg>('contratos')
@@ -139,6 +140,7 @@ export function Servicios({ esRrhh }: Permisos) {
       permisos={todo(esRrhh)}
       nota="Para agregar cargos (composición salarial y métricas), editá el servicio. Un servicio con cargos o requerimientos no se puede eliminar (la base lo impide): desactivalo con el interruptor “Activo”."
       idDe={(s) => s.id}
+      abrirId={abrirId}
       nombreDe={(s) => s.nombre}
       columnas={[
         { titulo: 'Código', valor: (s) => vacio(s.codigo), clase: 'whitespace-nowrap' },
@@ -293,7 +295,7 @@ export function CargosSeccion({ esRrhh }: Permisos) {
 
 // --- 6. Contratos ----------------------------------------------------------------------
 
-export function Contratos({ esRrhh }: Permisos) {
+export function Contratos({ esRrhh, abrirId }: ConApertura) {
   const q = useConfigLista<ContratoCfg>('contratos')
   const clientes = useConfigLista<ClienteCfg>('clientes')
   const conFin = (v: Valores) => texto(v, 'fecha_fin') !== ''
@@ -308,6 +310,7 @@ export function Contratos({ esRrhh }: Permisos) {
       error={q.error}
       permisos={todo(esRrhh)}
       idDe={(k) => k.id}
+      abrirId={abrirId}
       nombreDe={(k) => k.codigo}
       columnas={[
         { titulo: 'Código', valor: (k) => <span className="font-medium text-nova-titulo">{k.codigo}</span> },

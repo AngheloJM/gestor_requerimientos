@@ -32,6 +32,7 @@ export function MatrizPage() {
   const [params, setParams] = useSearchParams()
   // Por defecto (y para "Ir a corregir" del tablero, que llega con ?servicio=<id>): composición.
   const pedida = params.get('seccion')
+  const editar = params.get('editar')
   const seccion: Seccion = SECCIONES.some(([s]) => s === pedida) ? (pedida as Seccion) : 'composicion'
 
   // Contadores de las pestañas (las listas se reutilizan desde caché en cada sección).
@@ -79,9 +80,9 @@ export function MatrizPage() {
       <div role="tabpanel">
         {seccion === 'clientes' && <ClientesYProyectos esRrhh={esRrhh} />}
         {seccion === 'centros' && <CentrosCosto esRrhh={esRrhh} />}
-        {seccion === 'contratos' && <Contratos esRrhh={esRrhh} />}
+        {seccion === 'contratos' && <Contratos esRrhh={esRrhh} abrirId={editar} />}
         {seccion === 'cargos' && <CargosSeccion esRrhh={esRrhh} />}
-        {seccion === 'servicios' && <Servicios esRrhh={esRrhh} />}
+        {seccion === 'servicios' && <Servicios esRrhh={esRrhh} abrirId={editar} />}
         {seccion === 'composicion' && <ComposicionSalarial esRrhh={esRrhh} />}
       </div>
     </div>

@@ -1,6 +1,7 @@
-import { AlertTriangle, CheckCircle2, ChevronDown, Layers, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, CheckCircle2, ChevronDown, Layers, type LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
-import { type Area, useTablero } from '@/api'
+import { type Area, type ServicioIncompleto, useTablero } from '@/api'
 import { EstadoBadge, type Tono } from '@/components/EstadoBadge'
 import { ErrorApi } from '@/components/ErrorApi'
 import { TarjetaSolicitud } from '@/components/solicitudes/TarjetaSolicitud'
@@ -22,6 +23,14 @@ const TAREAS: Record<string, string> = {
   contrato_no_vigente: 'Contrato no vigente',
   verificar_vigencia_contrato: 'Verificar vigencia',
   definir_cargos: 'Sin cargos definidos',
+}
+
+/** Dónde se corrige cada tarea: el contrato en Contratos; asignar contrato y cargos, en el servicio. */
+function destinoTarea(codigo: string, s: ServicioIncompleto): string {
+  const contrato = codigo === 'contrato_no_vigente' || codigo === 'verificar_vigencia_contrato'
+  return contrato && s.contrato_id
+    ? `/matriz?seccion=contratos&editar=${encodeURIComponent(s.contrato_id)}`
+    : `/matriz?seccion=servicios&editar=${encodeURIComponent(s.servicio.id)}`
 }
 
 const AREA_TITULO: Record<Area, string> = { comercial: 'Comercial', operaciones: 'Operaciones', rrhh: 'RR.HH.' }
@@ -153,9 +162,12 @@ export function TableroPage() {
                       </td>
                       <td className="flex flex-wrap gap-1.5 px-5 py-3">
                         {s.tareas.map((t) => (
-                          <EstadoBadge key={t.codigo} tono={AREA_TONO[t.area]}>
-                            {TAREAS[t.codigo] ?? t.codigo}
-                          </EstadoBadge>
+                          <Link key={t.codigo} to={destinoTarea(t.codigo, s)} className="rounded-full hover:opacity-80" title="Ir a corregir">
+                            <EstadoBadge tono={AREA_TONO[t.area]}>
+                              {TAREAS[t.codigo] ?? t.codigo}
+                              <ArrowUpRight className="ml-1 inline size-3" aria-hidden />
+                            </EstadoBadge>
+                          </Link>
                         ))}
                       </td>
                     </tr>
