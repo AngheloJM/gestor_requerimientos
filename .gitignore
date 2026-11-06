@@ -20,3 +20,8 @@ dist/
 
 # Material de referencia del cliente (no publicar)
 /*.zip
+
+# Material de revisiones con la clienta (capturas de llamadas, planes con nombres): NO publicar
+/PLAN_REVISION_*.md
+/[0-9][0-9]_*.jpg
+/capturas/
