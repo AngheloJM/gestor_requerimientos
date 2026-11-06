@@ -124,15 +124,3 @@
   }
 }
 
-/* Alto contraste (revisión 04/11/2026, baja visión): textos secundarios y bordes más oscuros. */
-html.alto-contraste {
-  --color-nova-texto-2: #1d2939;
-  --color-nova-gris: #344054;
-  --color-nova-gris-claro: #475467;
-  --muted-foreground: #344054;
-  --border: #98a2b3;
-  --input: #667085;
-}
-html.alto-contraste body {
-  -webkit-font-smoothing: auto;
-}

@@ -6,11 +6,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from '@/App'
 import { AuthProvider } from '@/auth/AuthProvider'
-import { aplicarPreferencias, leerPreferencias } from '@/lib/accesibilidad'
 import { queryClient } from '@/lib/query-client'
-
-// Contraste elegido por el usuario, antes del primer render.
-aplicarPreferencias(leerPreferencias())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

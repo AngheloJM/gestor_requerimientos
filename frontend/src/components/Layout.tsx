@@ -1,4 +1,3 @@
-import { Accesibilidad } from '@/components/Accesibilidad'
 import {
   CalendarDays,
   ClipboardCheck,
@@ -144,8 +143,7 @@ export function Layout() {
         >
           <Menu className="size-5" />
         </button>
-        <h1 className="truncate text-xl font-semibold">{titulo}</h1>
-        <Accesibilidad />
+        <h1 className="text-xl font-semibold">{titulo}</h1>
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
