@@ -204,6 +204,10 @@ A confirmar / TODO(negocio):
       `editar_requerimiento_con_historial`). El historial muestra quién hizo cada cambio.
 - [ ] TODO(negocio): al mover la fecha de operación, la de capacitación **no** se recalcula
       (la base no lo hace y solo RR.HH. puede editarla). ¿Debería moverse junto?
+- [x] Punto 16: al tocar un día vacío del Almanaque, el panel ofrece "Crear requerimiento", que
+      abre Nuevo requerimiento con ese día como fecha de inicio de operación.
+- [ ] A confirmar: el calendario muestra fechas de **entrega a capacitación**, pero el día elegido
+      se precarga como fecha de inicio de **operación** (lo pedido). ¿Es lo que espera la clienta?
 - [ ] Migración 0006 **no aplicada en producción** (cambia una función en uso): requiere
       confirmación, respaldo y ensayo con ROLLBACK.
 

@@ -1,11 +1,11 @@
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { type DiaAlmanaque, type LineaAlmanaque, type Requerimiento, useAlmanaque, useRequerimientos } from '@/api'
 import { EstadoBadge, type Tono } from '@/components/EstadoBadge'
 import { ErrorApi } from '@/components/ErrorApi'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { diaSemanaLunes, formatFecha, nombreMes } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -84,7 +84,13 @@ function Detalle({ dia, cerrar, porFolio }: { dia: DiaAlmanaque; cerrar: () => v
         </Button>
       </div>
       {ls.length === 0 ? (
-        <p className="mt-3 text-base text-nova-gris">Sin entregas este día.</p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-base text-nova-gris">Sin entregas este día.</p>
+          {/* Revisión 06/11/2026, punto 16: crear un requerimiento con esta fecha precargada. */}
+          <Link to={`/nuevo-requerimiento?operacion=${dia.fecha}`} className={buttonVariants({ size: 'sm' })}>
+            <Plus aria-hidden /> Crear requerimiento
+          </Link>
+        </div>
       ) : (
         <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {ls.map((l, i) => {

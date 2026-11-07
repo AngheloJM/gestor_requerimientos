@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, CheckCircle2, ClipboardCheck, Info, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 
 import {
@@ -222,6 +222,10 @@ export function NuevoRequerimientoPage() {
   const opciones = useOpcionesRequerimiento()
   const { data: me } = useMe()
   const crear = useCrearRequerimiento()
+  // Desde el Almanaque (día vacío → "Crear requerimiento") llega ?operacion=AAAA-MM-DD.
+  const [params] = useSearchParams()
+  const precargada = params.get('operacion')
+  const inicial: Formulario = precargada && /^\d{4}-\d{2}-\d{2}$/.test(precargada) ? { ...VACIO, fecha_inicio_operacion: precargada } : VACIO
   const {
     register,
     handleSubmit,
@@ -229,7 +233,7 @@ export function NuevoRequerimientoPage() {
     setValue,
     reset,
     formState: { errors },
-  } = useForm<Formulario>({ resolver: zodResolver(esquema), defaultValues: VACIO })
+  } = useForm<Formulario>({ resolver: zodResolver(esquema), defaultValues: inicial })
   const bonos = useFieldArray({ control, name: 'bonos_extra' })
   // Paso de confirmación: el formulario válido muestra un resumen; recién ahí se crea.
   const [resumen, setResumen] = useState<CrearRequerimiento | null>(null)
