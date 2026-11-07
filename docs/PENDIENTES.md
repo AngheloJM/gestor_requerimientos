@@ -214,6 +214,12 @@ A confirmar / TODO(negocio):
 - [x] Cargos compartidos (decisión del 2026-11-07): un cargo **sin ningún servicio activo** se
       puede repartir entre cualquier centro de costo (mínimo 2). Cargo en servicios con un solo
       centro: sigue bloqueado. Con 2 o más centros: sin cambios. Sin cambio de base.
+- [x] Punto 8 (datos del solicitante a la derecha): confirmado sin cambios (la clienta lo validaba).
+- [ ] TODO(negocio), puntos 13–14: la clienta pidió agregar una opción a "Motivo del desvío" pero no
+      llegó a decir cuál (pausa en el audio). Se le pregunta directamente; nada que implementar hasta
+      tener la respuesta. Hoy las opciones son las que admite la base (falla de capacitación, rechazo
+      de operaciones, ratio de reclutamiento, cambio del cliente): una opción nueva probablemente
+      requiera cambiar la validación de la función oficial de edición.
 - [ ] Migración 0006 **no aplicada en producción** (cambia una función en uso): requiere
       confirmación, respaldo y ensayo con ROLLBACK.
 
