@@ -124,6 +124,11 @@ FROM cargos c WHERE c.tipo = 'administrativo_staff' ORDER BY c.nombre
 
 /// Llama a la función de producción. Las claves del JSON son las que ella acepta; los nulos
 /// se omiten. Los montos viajan como `numeric` (sin pasar por float).
+///
+/// OJO, fecha de capacitación: la función la calcula con el tiempo del **servicio**, pero ese
+/// valor NO es el definitivo. El trigger `validar_fechas_nuevo_requerimiento` (BEFORE INSERT,
+/// migración 0006) corre después y lo sobreescribe con el tiempo del **cargo** (respaldo: el
+/// del servicio). La fecha real se define en el trigger, no en esta función.
 const QUERY_CREAR: &str = r#"
 SELECT f.folio::text FROM public.crear_requerimiento_con_snapshot(
     jsonb_strip_nulls(jsonb_build_object(

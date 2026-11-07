@@ -49,6 +49,8 @@ pub struct EntradaHistorial {
     pub valor_anterior: Option<String>,
     pub valor_nuevo: Option<String>,
     pub usuario_id: Option<UsuarioId>,
+    /// Nombre de quien editó (`None` si RLS no deja ver a ese usuario).
+    pub usuario_nombre: Option<String>,
     pub created_at: DateTime<Utc>,
     pub glosa: Option<String>,
     pub grupo_edicion: Option<String>,

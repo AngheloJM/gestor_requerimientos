@@ -2,6 +2,11 @@
 -- requerimientos en producción: función `crear_requerimiento_con_snapshot` y trigger
 -- `validar_fechas_nuevo_requerimiento`. Requiere `p2_edicion` (requerimiento_referencia,
 -- trigger de auditoría). Si cambian en producción, actualizar esta copia.
+--
+-- OJO: el cálculo de `v_fecha_capacitacion` dentro de `crear_requerimiento_con_snapshot` (con
+-- el tiempo del servicio) queda SOBREESCRITO por el trigger `validar_fechas_nuevo_requerimiento`.
+-- La versión vigente del trigger es la de la migración 0006 (tiempo del cargo, con respaldo del
+-- servicio), que los tests cargan como fixture `capacitacion_por_cargo`.
 
 CREATE OR REPLACE FUNCTION public.validar_fechas_nuevo_requerimiento()
  RETURNS trigger

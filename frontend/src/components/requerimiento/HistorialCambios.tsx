@@ -21,7 +21,7 @@ const CAMPO: Record<string, string> = {
   comentarios_adicionales: 'Comentarios',
 }
 
-const texto = (v: string | null | undefined) => v ?? '—'
+const texto = (v: string | null | undefined) => (v == null ? '—' : /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatFecha(v) : v)
 
 /** Historial de cambios (requerimiento_historial), del más reciente al más antiguo. */
 export function HistorialCambios({ id }: { id: string }) {
@@ -43,7 +43,10 @@ export function HistorialCambios({ id }: { id: string }) {
               {h.detalle_desvio ? ` · ${h.detalle_desvio}` : ''}
             </p>
           )}
-          <p className="mt-0.5 text-xs text-nova-gris">{formatFecha(h.created_at.slice(0, 10))}</p>
+          <p className="mt-0.5 text-xs text-nova-gris">
+            {formatFecha(h.created_at.slice(0, 10))}
+            {h.usuario_nombre ? ` · ${h.usuario_nombre}` : ''}
+          </p>
         </li>
       ))}
     </ol>

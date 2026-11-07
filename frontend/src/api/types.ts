@@ -378,9 +378,11 @@ export interface EditarRequerimiento {
 }
 
 /** PATCH /requerimientos/{id}: cambia la cantidad actual (glosa obligatoria). */
-export interface EditarCantidad {
+/** PATCH /requerimientos/{id}: cantidad y/o fecha de inicio de operación, con trazabilidad. */
+export interface EditarConTrazabilidad {
   id: Uuid
-  cantidad: number
+  cantidad?: number
+  fecha_inicio_operacion?: FechaIso
   version: Timestamp
   glosa: string
   categoria_desvio?: CategoriaDesvio
@@ -393,6 +395,8 @@ export interface EntradaHistorial {
   valor_anterior: string | null
   valor_nuevo: string | null
   usuario_id: Uuid | null
+  /** null si RLS no deja ver a ese usuario. */
+  usuario_nombre: string | null
   created_at: Timestamp
   glosa: string | null
   grupo_edicion: string | null

@@ -57,6 +57,7 @@ async fn edicion<'a>(
         fecha_fin: Some(nueva),
         estado: None,
         cantidad: None,
+        fecha_inicio_operacion: None,
         version,
         glosa,
         categoria_desvio: None,
@@ -310,7 +311,6 @@ async fn cantidad_actual_con_glosa_sin_tocar_la_original(pool: db::PgPool) {
         (d.cantidad, d.cantidad_original, d.total_aceptado),
         (Some(5), Some(3), 3)
     );
-    // Entrega 91 (3) rectificada por la 92 (2): cuenta el valor final, no 3 + 2.
     // Entrega de 3 + rectificación de 2 = 5 (suma, criterio decidido).
     assert_eq!(d.reclutados_informados, 5);
     let h = historial(&mut tx, req81()).await.unwrap().unwrap();
@@ -330,4 +330,76 @@ async fn cantidad_actual_con_glosa_sin_tocar_la_original(pool: db::PgPool) {
         )
     );
     assert_eq!(u.categoria_desvio.as_deref(), Some("cambio_cliente"));
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures("supabase_subset", "rls_test", "datos", "p2_edicion")
+)]
+async fn fecha_de_operacion_con_glosa_e_historial_por_usuario(pool: db::PgPool) {
+    let req84 = RequerimientoId(uid(REQ_84));
+    let operacion = |f: NaiveDate, e: EdicionRequerimiento<'static>| EdicionRequerimiento {
+        fecha_fin: None,
+        fecha_inicio_operacion: Some(f),
+        ..e
+    };
+    let f = |m: u32, d: u32| NaiveDate::from_ymd_opt(2026, m, d).unwrap();
+    let capacitacion_antes: Option<NaiveDate> =
+        sqlx::query_scalar("SELECT fecha_inicio_capacitacion FROM requerimientos WHERE id = $1")
+            .bind(uid(REQ_84))
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    // Sin glosa: rechazado por la base.
+    let mut tx = como(&pool, ESTANDAR).await;
+    let e = edicion(&mut tx, req84, None, "").await;
+    assert!(matches!(
+        actualizar(&mut tx, req84, operacion(f(11, 10), e)).await,
+        Err(ActualizarError::Regla(m)) if m.contains("Glosa")
+    ));
+    drop(tx);
+
+    // Usuario estándar con acceso al servicio: mueve la fecha con glosa y desvío.
+    let mut tx = como(&pool, ESTANDAR).await;
+    let mut e = operacion(
+        f(11, 10),
+        edicion(&mut tx, req84, None, "el cliente corrió el inicio").await,
+    );
+    e.categoria_desvio = Some("cambio_cliente");
+    e.detalle_desvio = Some("nueva fecha de campaña");
+    actualizar(&mut tx, req84, e).await.unwrap();
+    let d = db::requerimientos::detalle(&mut tx, uid(REQ_84))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(d.fecha_inicio_operacion, Some(f(11, 10)));
+    assert_eq!(
+        d.fecha_inicio_capacitacion, capacitacion_antes,
+        "la de capacitación no se mueve sola"
+    );
+    let h = historial(&mut tx, req84).await.unwrap().unwrap();
+    let u = h.last().unwrap();
+    assert_eq!(
+        (
+            u.campo.as_str(),
+            u.valor_anterior.as_deref(),
+            u.valor_nuevo.as_deref(),
+            u.glosa.as_deref(),
+            u.usuario_id.map(|x| x.0),
+        ),
+        (
+            "fecha_inicio_operacion",
+            Some("2026-10-25"),
+            Some("2026-11-10"),
+            Some("el cliente corrió el inicio"),
+            Some(uid(ESTANDAR)),
+        )
+    );
+    assert_eq!(u.categoria_desvio.as_deref(), Some("cambio_cliente"));
+    assert!(
+        u.usuario_nombre.is_some(),
+        "el historial trae el nombre de quien editó"
+    );
 }

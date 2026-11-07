@@ -62,10 +62,12 @@ ORDER BY r.fecha_inicio, r.numero
 const QUERY_HISTORIAL: &str = r#"
 SELECT h.id::text AS id, h.campo::text AS campo,
        h.valor_anterior::text AS valor_anterior, h.valor_nuevo::text AS valor_nuevo,
-       h.usuario_id, h.created_at::timestamptz AS created_at,
+       h.usuario_id, u.nombre::text AS usuario_nombre, h.created_at::timestamptz AS created_at,
        h.glosa::text AS glosa, h.grupo_edicion::text AS grupo_edicion,
        h.categoria_desvio::text AS categoria_desvio, h.detalle_desvio::text AS detalle_desvio
 FROM requerimiento_historial h
+-- Nombre de quien editó; NULL si RLS no deja ver a ese usuario.
+LEFT JOIN usuarios u ON u.id = h.usuario_id
 WHERE h.requerimiento_id = $1
 ORDER BY h.created_at, h.id
 "#;
@@ -135,6 +137,7 @@ struct HistorialRow {
     valor_anterior: Option<String>,
     valor_nuevo: Option<String>,
     usuario_id: Option<Uuid>,
+    usuario_nombre: Option<String>,
     created_at: DateTime<Utc>,
     glosa: Option<String>,
     grupo_edicion: Option<String>,
@@ -186,6 +189,7 @@ pub async fn historial(
                 valor_anterior: h.valor_anterior,
                 valor_nuevo: h.valor_nuevo,
                 usuario_id: h.usuario_id.map(Into::into),
+                usuario_nombre: h.usuario_nombre,
                 created_at: h.created_at,
                 glosa: h.glosa,
                 grupo_edicion: h.grupo_edicion,
@@ -244,6 +248,9 @@ pub struct EdicionRequerimiento<'a> {
     /// Nueva **cantidad actual** (`cantidad_personas`). La original queda intacta en
     /// `requerimiento_referencia`. La base exige ≥ 1 y ≥ lo ya aceptado en entregas.
     pub cantidad: Option<i32>,
+    /// Nueva fecha de inicio de operación. No mueve la de capacitación (la base no lo hace y
+    /// solo RR.HH. puede editar esa). No se puede borrar (lo impide la base).
+    pub fecha_inicio_operacion: Option<NaiveDate>,
     /// `updated_at` que el cliente leyó (`Aprobacion::version`).
     pub version: DateTime<Utc>,
     /// Obligatoria (3–2000 caracteres; lo valida la base).
@@ -259,15 +266,22 @@ SELECT public.editar_requerimiento_con_historial(
     $1,
     CASE WHEN $2 THEN jsonb_build_object('fecha_fin', $3::text) ELSE '{}'::jsonb END
     || CASE WHEN $4::text IS NOT NULL THEN jsonb_build_object('estado', $4::text) ELSE '{}'::jsonb END
-    || CASE WHEN $9::int4 IS NOT NULL THEN jsonb_build_object('cantidad_personas', $9::int4) ELSE '{}'::jsonb END,
+    || CASE WHEN $9::int4 IS NOT NULL THEN jsonb_build_object('cantidad_personas', $9::int4) ELSE '{}'::jsonb END
+    || CASE WHEN $10::text IS NOT NULL THEN jsonb_build_object('fecha_inicio_operacion', $10::text) ELSE '{}'::jsonb END,
     $5, $6, $7, $8)
 "#;
 
 /// Aplica la edición dentro de la transacción del request (el llamador hace commit). Los
 /// campos que no cambian se omiten; si ninguno cambia no se escribe nada (la base rechazaría
 /// "No hay cambios para guardar").
-/// (fecha_inicio, fecha_fin, estado, cantidad_personas) actuales del requerimiento.
-type EstadoActual = (NaiveDate, Option<NaiveDate>, Option<String>, Option<i32>);
+/// (fecha_inicio, fecha_fin, estado, cantidad_personas, fecha_inicio_operacion) actuales.
+type EstadoActual = (
+    NaiveDate,
+    Option<NaiveDate>,
+    Option<String>,
+    Option<i32>,
+    Option<NaiveDate>,
+);
 
 pub async fn actualizar(
     conn: &mut PgConnection,
@@ -277,13 +291,16 @@ pub async fn actualizar(
     let uid = Uuid::from(id);
 
     let visible: Option<EstadoActual> = sqlx::query_as(
-        "SELECT fecha_inicio::date, fecha_fin::date, estado::text, cantidad_personas::int4
+        "SELECT fecha_inicio::date, fecha_fin::date, estado::text, cantidad_personas::int4,
+                fecha_inicio_operacion::date
          FROM requerimientos WHERE id = $1",
     )
     .bind(uid)
     .fetch_optional(&mut *conn)
     .await?;
-    let Some((fecha_inicio, fin_actual, estado_actual, cantidad_actual)) = visible else {
+    let Some((fecha_inicio, fin_actual, estado_actual, cantidad_actual, operacion_actual)) =
+        visible
+    else {
         return Err(ActualizarError::NoEncontrado);
     };
 
@@ -293,8 +310,11 @@ pub async fn actualizar(
     let fecha_fin = e.fecha_fin.filter(|f| *f != fin_actual);
     let estado = e.estado.filter(|s| Some(*s) != estado_actual.as_deref());
     let cantidad = e.cantidad.filter(|c| Some(*c) != cantidad_actual);
+    let operacion = e
+        .fecha_inicio_operacion
+        .filter(|f| Some(*f) != operacion_actual);
 
-    if fecha_fin.is_some() || estado.is_some() || cantidad.is_some() {
+    if fecha_fin.is_some() || estado.is_some() || cantidad.is_some() || operacion.is_some() {
         sqlx::query(QUERY_EDITAR)
             .bind(uid)
             .bind(fecha_fin.is_some())
@@ -309,6 +329,7 @@ pub async fn actualizar(
             .bind(e.categoria_desvio)
             .bind(e.detalle_desvio)
             .bind(cantidad)
+            .bind(operacion.map(|f| f.format("%Y-%m-%d").to_string()))
             .execute(&mut *conn)
             .await?;
     }

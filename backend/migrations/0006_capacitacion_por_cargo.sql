@@ -56,3 +56,11 @@ BEGIN
  IF NEW.fecha_inicio_capacitacion IS NULL OR NEW.fecha_inicio_operacion IS NULL THEN RAISE EXCEPTION 'Indica la fecha de inicio de capacitación y la fecha de inicio de operación.'; END IF;
  RETURN NEW;
 END $function$;
+
+-- Aviso visible en la base para quien lea `crear_requerimiento_con_snapshot` (solo metadato:
+-- no cambia su código ni su comportamiento).
+COMMENT ON FUNCTION public.crear_requerimiento_con_snapshot(jsonb) IS
+  'El cálculo de fecha_inicio_capacitacion de esta función (con el tiempo del servicio) queda '
+  'sobreescrito por el trigger validar_fechas_nuevo_requerimiento (BEFORE INSERT), que usa el '
+  'tiempo del cargo en el servicio y, si no lo tiene, el del servicio. La fecha real se define '
+  'en el trigger (migración 0006).';

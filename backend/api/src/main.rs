@@ -123,7 +123,7 @@ fn protected_routes(state: AppState) -> Router<AppState> {
         .route("/feriados/{id}", delete(feriados::eliminar))
         .route(
             "/requerimientos/{id}",
-            get(requerimientos::detalle).patch(requerimientos::editar_cantidad),
+            get(requerimientos::detalle).patch(requerimientos::editar),
         )
         .route(
             "/parametros-salariales",

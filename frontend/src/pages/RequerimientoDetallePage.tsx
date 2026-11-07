@@ -6,6 +6,7 @@ import { type BonoCongelado, useRequerimiento } from '@/api'
 import { EstadoRequerimiento, etiquetaTipo } from '@/components/EstadoRequerimiento'
 import { ErrorApi } from '@/components/ErrorApi'
 import { EntregasParciales } from '@/components/requerimiento/EntregasParciales'
+import { FechaOperacion } from '@/components/requerimiento/FechaOperacion'
 import { HistorialCambios } from '@/components/requerimiento/HistorialCambios'
 import { PanelSolicitante } from '@/components/requerimiento/PanelSolicitante'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -115,9 +116,7 @@ export function RequerimientoDetallePage() {
               </Seccion>
 
               <Seccion titulo="4. Fecha">
-                <Grilla>
-                  <Dato etiqueta="Fecha de inicio de operación">{formatFecha(r.fecha_inicio_operacion)}</Dato>
-                </Grilla>
+                <FechaOperacion r={r} />
               </Seccion>
 
               <Seccion titulo="5. Sueldo y bonos congelados al crear">

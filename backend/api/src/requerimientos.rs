@@ -2,7 +2,7 @@
 //! GET  /requerimientos/opciones   — servicios/cargos elegibles y catálogos del formulario.
 //! POST /requerimientos            — crea vía `crear_requerimiento_con_snapshot` → 201 {folio}.
 //! GET  /requerimientos/{id}       — detalle (404 si no existe o RLS no lo deja ver).
-//! PATCH /requerimientos/{id}      — cambia la **cantidad actual** vía `editar_requerimiento_con_historial`
+//! PATCH /requerimientos/{id}      — cambia la **cantidad actual** y/o la **fecha de inicio de operación** vía `editar_requerimiento_con_historial`
 //!                                    (glosa obligatoria; queda en requerimiento_historial).
 //!
 //! Devuelve lo que RLS permite ver (RR.HH.: todos). Con `mios=true`, solo los que pidió el
@@ -234,25 +234,32 @@ pub async fn detalle(
         .ok_or(ApiError::NotFound)
 }
 
-/// Cambio de cantidad requerida. `version` es el `version` del detalle; `glosa` obligatoria
-/// (3–2000); categoría y detalle del desvío van juntos o ninguno (lo valida la base).
+/// Edición con trazabilidad de la cantidad requerida y/o la fecha de inicio de operación.
+/// `version` es el `version` del detalle; `glosa` obligatoria (3–2000); categoría y detalle
+/// del desvío van juntos o ninguno (lo valida la base). Al menos uno de los dos campos.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct PatchCantidad {
-    pub cantidad: i32,
+pub struct PatchRequerimiento {
+    pub cantidad: Option<i32>,
+    pub fecha_inicio_operacion: Option<chrono::NaiveDate>,
     pub version: chrono::DateTime<chrono::Utc>,
     pub glosa: String,
     pub categoria_desvio: Option<String>,
     pub detalle_desvio: Option<String>,
 }
 
-pub async fn editar_cantidad(
+pub async fn editar(
     State(pool): State<PgPool>,
     user: AuthUser,
     Path(id): Path<Uuid>,
-    Json(b): Json<PatchCantidad>,
+    Json(b): Json<PatchRequerimiento>,
 ) -> ApiResult<Json<db::requerimientos::DetalleRequerimiento>> {
-    if b.cantidad < 1 {
+    if b.cantidad.is_none() && b.fecha_inicio_operacion.is_none() {
+        return Err(ApiError::Unprocessable(
+            "indicá la cantidad o la fecha de inicio de operación".into(),
+        ));
+    }
+    if b.cantidad.is_some_and(|c| c < 1) {
         return Err(ApiError::Unprocessable(
             "la cantidad debe ser al menos 1".into(),
         ));
@@ -260,7 +267,8 @@ pub async fn editar_cantidad(
     let edicion = db::aprobaciones::EdicionRequerimiento {
         fecha_fin: None,
         estado: None,
-        cantidad: Some(b.cantidad),
+        cantidad: b.cantidad,
+        fecha_inicio_operacion: b.fecha_inicio_operacion,
         version: b.version,
         glosa: &b.glosa,
         categoria_desvio: b.categoria_desvio.as_deref().filter(|c| !c.is_empty()),
@@ -274,6 +282,6 @@ pub async fn editar_cantidad(
         .await?
         .ok_or(ApiError::NotFound)?;
     tx.commit().await?;
-    tracing::info!(requerimiento_id = %id, usuario_id = %user.user_id, cantidad = b.cantidad, "cantidad requerida editada");
+    tracing::info!(requerimiento_id = %id, usuario_id = %user.user_id, cantidad = ?b.cantidad, operacion = ?b.fecha_inicio_operacion, "requerimiento editado con trazabilidad");
     Ok(Json(d))
 }

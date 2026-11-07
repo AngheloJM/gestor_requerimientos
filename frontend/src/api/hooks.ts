@@ -17,7 +17,7 @@ import type {
   GuardarRol,
   GuardarUsuario,
   CrearRequerimiento,
-  EditarCantidad,
+  EditarConTrazabilidad,
   Me,
   NuevoValorParametro,
   OpcionesRequerimiento,
@@ -84,10 +84,10 @@ export function useRequerimiento(id: string | undefined) {
 }
 
 /** Cambia la cantidad actual; queda en requerimiento_historial con su glosa. */
-export function useEditarCantidad() {
+export function useEditarConTrazabilidad() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: EditarCantidad) =>
+    mutationFn: ({ id, ...body }: EditarConTrazabilidad) =>
       api.patch<RequerimientoDetalle>(`/requerimientos/${encodeURIComponent(id)}`, body),
     onSuccess: (d) => {
       qc.setQueryData(['requerimientos', 'detalle', d.id], d)

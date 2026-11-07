@@ -199,6 +199,11 @@ A confirmar / TODO(negocio):
       pantalla: tiempo del cargo (aunque sea 0) y, si no lo tiene, el general del servicio
       (migración 0006, reemplaza el trigger `validar_fechas_nuevo_requerimiento`; decisión del
       2026-11-07). `crear_requerimiento_con_snapshot` no se tocó: el trigger corre después.
+- [x] Punto 15: la fecha de inicio de operación se edita en el detalle con el mismo mecanismo
+      que la cantidad (glosa obligatoria, desvío opcional, función oficial
+      `editar_requerimiento_con_historial`). El historial muestra quién hizo cada cambio.
+- [ ] TODO(negocio): al mover la fecha de operación, la de capacitación **no** se recalcula
+      (la base no lo hace y solo RR.HH. puede editarla). ¿Debería moverse junto?
 - [ ] Migración 0006 **no aplicada en producción** (cambia una función en uso): requiere
       confirmación, respaldo y ensayo con ROLLBACK.
 
