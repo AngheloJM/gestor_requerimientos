@@ -31,14 +31,18 @@ DO $$ BEGIN
 END $$;
 
 -- -------------------------------------------------------------------------------------
--- 0. Limpieza de una corrida anterior (sin disparar triggers de auditoría/protección)
+-- 0. Limpieza de una corrida anterior (sin disparar triggers de auditoría/protección).
+--    También borra la variante local con nombres reales (seed_demo_real.sql, ids ...e0xx y
+--    marca "[CASO N]") para que en pantalla haya un solo juego de demostración.
 -- -------------------------------------------------------------------------------------
 BEGIN;
 SET LOCAL session_replication_role = replica;
 CREATE TEMP TABLE demo_req ON COMMIT DROP AS
   SELECT r.id FROM requerimientos r
-   WHERE r.comentarios_adicionales LIKE '[DEMO %'
-      OR r.servicio_id IN (SELECT id FROM servicios WHERE codigo IN ('DEMO-ATE', 'DEMO-COB'));
+   WHERE r.comentarios_adicionales LIKE '[DEMO %' OR r.comentarios_adicionales LIKE '[CASO %'
+      OR r.servicio_id IN (SELECT id FROM servicios WHERE codigo IN ('DEMO-ATE', 'DEMO-COB'))
+      OR r.servicio_id = '00000000-0000-4000-8000-00000000e031'
+      OR r.cargo_id::text LIKE '00000000-0000-4000-8000-00000000e0%';
 DELETE FROM requerimiento_entrega_decisiones
  WHERE entrega_id IN (SELECT id FROM requerimiento_entregas WHERE requerimiento_id IN (SELECT id FROM demo_req));
 DELETE FROM requerimiento_entregas WHERE corrige_entrega_id IS NOT NULL AND requerimiento_id IN (SELECT id FROM demo_req);
@@ -47,7 +51,8 @@ DELETE FROM requerimiento_historial WHERE requerimiento_id IN (SELECT id FROM de
 DELETE FROM requerimiento_referencia WHERE requerimiento_id IN (SELECT id FROM demo_req);
 DELETE FROM requerimientos WHERE id IN (SELECT id FROM demo_req);
 DELETE FROM cargo_centros_costo
- WHERE cargo_id IN (SELECT id FROM cargos WHERE nombre IN ('Agente Demo', 'Asistente Demo', 'Supervisor Demo Compartido'));
+ WHERE cargo_id IN (SELECT id FROM cargos WHERE nombre IN ('Agente Demo', 'Asistente Demo', 'Supervisor Demo Compartido'))
+    OR cargo_id::text LIKE '00000000-0000-4000-8000-00000000e0%';
 -- Con session_replication_role = replica tampoco corren los ON DELETE CASCADE: las tablas
 -- hijas se borran a mano (incluye filas huérfanas que pudiera haber dejado una corrida previa).
 DELETE FROM servicio_cargo_metrica_umbrales
@@ -55,16 +60,21 @@ DELETE FROM servicio_cargo_metrica_umbrales
    SELECT m.id FROM servicio_cargo_metricas m
     WHERE m.servicio_cargo_id IN (SELECT sc.id FROM servicio_cargos sc JOIN servicios s ON s.id = sc.servicio_id
                                    WHERE s.codigo IN ('DEMO-ATE', 'DEMO-COB'))
-       OR m.servicio_cargo_id::text LIKE '00000000-0000-4000-8000-00000000d0%');
+       OR m.servicio_cargo_id::text LIKE '00000000-0000-4000-8000-00000000d0%'
+       OR m.servicio_cargo_id::text LIKE '00000000-0000-4000-8000-00000000e0%');
 DELETE FROM servicio_cargo_metricas
  WHERE servicio_cargo_id IN (SELECT sc.id FROM servicio_cargos sc JOIN servicios s ON s.id = sc.servicio_id
                               WHERE s.codigo IN ('DEMO-ATE', 'DEMO-COB'))
-    OR servicio_cargo_id::text LIKE '00000000-0000-4000-8000-00000000d0%';
+    OR servicio_cargo_id::text LIKE '00000000-0000-4000-8000-00000000d0%'
+    OR servicio_cargo_id::text LIKE '00000000-0000-4000-8000-00000000e0%';
 DELETE FROM servicio_cargos
- WHERE servicio_id IN (SELECT id FROM servicios WHERE codigo IN ('DEMO-ATE', 'DEMO-COB'));
-DELETE FROM usuario_servicios WHERE servicio_id IN (SELECT id FROM servicios WHERE codigo IN ('DEMO-ATE', 'DEMO-COB'));
-DELETE FROM servicios WHERE codigo IN ('DEMO-ATE', 'DEMO-COB');
-DELETE FROM cargos WHERE nombre IN ('Agente Demo', 'Asistente Demo', 'Supervisor Demo Compartido');
+ WHERE servicio_id IN (SELECT id FROM servicios WHERE codigo IN ('DEMO-ATE', 'DEMO-COB'))
+    OR id::text LIKE '00000000-0000-4000-8000-00000000e0%';
+DELETE FROM usuario_servicios WHERE servicio_id IN (SELECT id FROM servicios WHERE codigo IN ('DEMO-ATE', 'DEMO-COB'))
+    OR servicio_id = '00000000-0000-4000-8000-00000000e031';
+DELETE FROM servicios WHERE codigo IN ('DEMO-ATE', 'DEMO-COB') OR id = '00000000-0000-4000-8000-00000000e031';
+DELETE FROM cargos WHERE nombre IN ('Agente Demo', 'Asistente Demo', 'Supervisor Demo Compartido')
+    OR id::text LIKE '00000000-0000-4000-8000-00000000e0%';
 DELETE FROM contratos_comerciales WHERE codigo = 'K-DEMO';
 DELETE FROM clientes WHERE nombre = 'Cliente Demo S.A.';
 DELETE FROM centros_costo WHERE codigo IN ('DEMO-A', 'DEMO-B');

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Carga (o vuelve a cargar) los datos de demostración en la base LOCAL.
 # Solo usa la URL de la base local (./db.sh url); no acepta otra. Ver docs/DATOS_DE_PRUEBA.md.
+#   ./seed-demo.sh        → datos ficticios (seed_demo.sql, versionado)
+#   ./seed-demo.sh real   → variante con nombres reales (seed_demo_real.sql, solo local)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -10,4 +12,10 @@ case "$URL" in
   *) echo "La URL de ./db.sh no apunta a la base local; abortado." >&2; exit 1 ;;
 esac
 
-psql "$URL" -q -v ON_ERROR_STOP=1 -f seed_demo.sql
+ARCHIVO=seed_demo.sql
+if [[ "${1:-}" == "real" ]]; then
+  ARCHIVO=seed_demo_real.sql
+  [[ -f "$ARCHIVO" ]] || { echo "No existe $ARCHIVO (es solo local, no está en el repositorio)." >&2; exit 1; }
+fi
+
+psql "$URL" -q -v ON_ERROR_STOP=1 -f "$ARCHIVO"

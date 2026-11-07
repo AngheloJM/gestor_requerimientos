@@ -3,3 +3,7 @@
 
 # Datos de demostración con nombres reales del cliente: solo local, no publicar
 demo-local.sql
+
+# Variante de los datos de prueba con nombres reales del cliente: solo local, no publicar
+seed_demo_real.sql
+DATOS_DE_PRUEBA_REAL.md

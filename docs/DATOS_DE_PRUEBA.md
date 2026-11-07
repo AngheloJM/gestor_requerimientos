@@ -6,6 +6,7 @@ Nunca se carga en producción.
 - Script: [`infra/db/seed_demo.sql`](../infra/db/seed_demo.sql).
 - Cómo correrlo: `infra/db/seed-demo.sh`. Solo acepta la URL de la base local (`infra/db/db.sh url`). Además, el SQL se corta si no encuentra la tabla `credenciales`, que solo existe en la base local.
 - **Reseteable:** cada corrida borra todo lo "Demo" y lo vuelve a crear. Se puede repetir sin que nada se duplique.
+- **Variante con nombres reales:** `infra/db/seed-demo.sh real`. Es solo local: `seed_demo_real.sql` y su documento `infra/db/DATOS_DE_PRUEBA_REAL.md` están en `infra/db/.gitignore`. Cada variante borra la otra al empezar, así que en pantalla hay un solo juego por vez.
 - **Usuario para la demo:** `rrhh@demo.local`. La contraseña está en `infra/db/.credenciales-dev` (archivo local, no versionado).
 - **Folios:** cambian en cada corrida, porque la base los numera sola. Cada caso se reconoce por el inicio de su comentario: **`[DEMO 1]` … `[DEMO 5]`**. Al terminar, el script imprime una tabla con el folio de cada caso.
 - **Otros datos en pantalla:** también se ven los datos locales que ya había. Los de la demo son los que dicen "Demo".
