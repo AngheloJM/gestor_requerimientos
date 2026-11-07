@@ -172,6 +172,10 @@ A confirmar / TODO(negocio):
 - [ ] Capacitación ajustada: queda **solo por cargo** (`servicio_cargos`). Si la clienta, al ver
       el nuevo flujo, pide igual un valor "por defecto" a nivel servicio, se evalúa después
       (implicaría una columna nueva en `servicios`). No implementado.
+- [x] Almanaque: una rectificación se muestra como "Cargo, Servicio, quedan N" (sin la palabra
+      "corrección" ni signo). N sigue el mismo criterio que "reclutados informados" (la última
+      rectificación reemplaza a la entrega): si se valida que la rectificación es un ajuste
+      (+/−), N pasaría a ser entrega + ajuste. Ver el TODO de reclutados informados.
 
 ## Nuevo requerimiento
 

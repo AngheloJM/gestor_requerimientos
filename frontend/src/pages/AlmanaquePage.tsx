@@ -14,8 +14,10 @@ import { cn } from '@/lib/utils'
  * Revisión 04/11/2026: el calendario muestra, en la **fecha de entrega**, una línea simple
  * "Cargo, Servicio, cantidad" — sin categorías ni colores por tipo de movimiento. El detalle
  * (cliente, estado, folios, fecha pactada de ingreso a operaciones) se ve al tocar el día.
- * A confirmar: las rectificaciones se muestran como "corrección" con su signo, sin netear; los
- * ingresos a operación y salidas ya no se muestran en el calendario.
+ * Revisión 06/11/2026: una rectificación se muestra como la cantidad que **queda** ("quedan N"),
+ * sin la palabra "corrección" ni signo. Mismo criterio que "reclutados informados": la última
+ * rectificación reemplaza a la entrega (semántica a validar, ver docs/PENDIENTES.md).
+ * Los ingresos a operación y salidas ya no se muestran en el calendario.
  */
 type Linea = LineaAlmanaque & { correccion: boolean }
 
@@ -34,14 +36,14 @@ const lineas = (d: DiaAlmanaque): Linea[] => [
 ]
 
 const cantidadTexto = (l: Linea) => {
-  const n = l.correccion && l.cantidad > 0 ? `+${l.cantidad}` : String(l.cantidad).replace('-', '−')
+  const valor = String(l.cantidad).replace('-', '−')
+  const n = l.correccion ? `quedan ${valor}` : valor
   if (l.registros_sin_cantidad === 0) return n
   return l.cantidad === 0 ? 'sin cantidad' : `${n} (+${l.registros_sin_cantidad} sin cantidad)`
 }
 
-/** "Operador Call Center, Fidelización, 5" */
-const resumen = (l: Linea) =>
-  `${l.cargo ?? 'Sin cargo'}, ${l.servicio ?? 'sin servicio'}, ${cantidadTexto(l)}${l.correccion ? ' (corrección)' : ''}`
+/** "Operador Call Center, Fidelización, 5" — o, si se rectificó, "…, quedan 2". */
+const resumen = (l: Linea) => `${l.cargo ?? 'Sin cargo'}, ${l.servicio ?? 'sin servicio'}, ${cantidadTexto(l)}`
 
 function hoyIso(): string {
   const h = new Date()
