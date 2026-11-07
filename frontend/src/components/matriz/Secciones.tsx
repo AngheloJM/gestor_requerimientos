@@ -138,9 +138,10 @@ export function Servicios({ esRrhh, abrirId }: ConApertura) {
       cargando={q.isPending}
       error={q.error}
       permisos={todo(esRrhh)}
-      nota="Para agregar cargos (composición salarial y métricas), editá el servicio. Un servicio con cargos o requerimientos no se puede eliminar (la base lo impide): desactivalo con el interruptor “Activo”."
+      nota="Al guardar un servicio nuevo queda abierto para agregarle sus cargos (composición salarial, cantidades, tiempos y métricas) en la misma hoja. Un servicio con cargos o requerimientos no se puede eliminar (la base lo impide): desactivalo con el interruptor “Activo”."
       idDe={(s) => s.id}
       abrirId={abrirId}
+      seguirEditandoAlCrear
       nombreDe={(s) => s.nombre}
       columnas={[
         { titulo: 'Código', valor: (s) => vacio(s.codigo), clase: 'whitespace-nowrap' },

@@ -164,6 +164,15 @@ A confirmar / TODO(negocio):
 - [ ] Centros de costo en producción: reemplazar TIGO-BO / TIGO-ST por la lista real requiere
       reasignar sus 8 servicios (decisión de mapeo pendiente).
 
+## Revisión con la clienta del 06/11/2026
+
+- [x] Servicio nuevo: al guardarlo queda abierto en edición con "Cargos de este servicio", para
+      armar cargos, salarios, cantidades, tiempos (incluida la capacitación ajustada) y métricas
+      en la misma hoja. Sin cambio de base.
+- [ ] Capacitación ajustada: queda **solo por cargo** (`servicio_cargos`). Si la clienta, al ver
+      el nuevo flujo, pide igual un valor "por defecto" a nivel servicio, se evalúa después
+      (implicaría una columna nueva en `servicios`). No implementado.
+
 ## Nuevo requerimiento
 
 - [x] Datos del solicitante en la columna derecha, junto a los datos fijos del servicio (en

@@ -254,6 +254,7 @@ export function CrudSeccion<T>({
   nota,
   extraEdicion,
   abrirId,
+  seguirEditandoAlCrear = false,
 }: {
   titulo: string
   /** Título del formulario de alta (por defecto "Nuevo · {titulo}"). */
@@ -276,6 +277,8 @@ export function CrudSeccion<T>({
   extraEdicion?: (t: T) => ReactNode
   /** Registro a abrir en edición al cargar (p. ej. al llegar desde el tablero con ?editar=<id>). */
   abrirId?: string | null
+  /** Tras crear, dejar el registro abierto en edición (para completar `extraEdicion` en la misma hoja). */
+  seguirEditandoAlCrear?: boolean
 }) {
   const guardar = useConfigGuardar(recurso)
   const eliminar = useConfigEliminar(recurso)
@@ -295,6 +298,15 @@ export function CrudSeccion<T>({
     const t = filas?.find((f) => idDe(f) === abrirId)
     if (t) {
       setAbiertoDesdeUrl(abrirId)
+      setEditando(t)
+    }
+  }
+  // Recién creado con `seguirEditandoAlCrear`: se abre en edición cuando la lista ya lo trae.
+  const [recienCreado, setRecienCreado] = useState<string | null>(null)
+  if (recienCreado) {
+    const t = filas?.find((f) => idDe(f) === recienCreado)
+    if (t) {
+      setRecienCreado(null)
       setEditando(t)
     }
   }
@@ -337,7 +349,12 @@ export function CrudSeccion<T>({
             guardar.mutate(
               { id: editando === 'nuevo' ? undefined : idDe(editando), body: aBody(v) },
               {
-                onSuccess: () => {
+                onSuccess: (r) => {
+                  if (editando === 'nuevo' && seguirEditandoAlCrear) {
+                    setHecho('Creado. Ahora podés agregar sus cargos más abajo.')
+                    setRecienCreado(r.id)
+                    return
+                  }
                   setHecho(editando === 'nuevo' ? 'Creado.' : 'Guardado.')
                   setEditando(null)
                 },
