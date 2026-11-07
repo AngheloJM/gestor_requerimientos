@@ -15,9 +15,28 @@ use sqlx::{FromRow, PgConnection};
 use crate::DbError;
 
 /// $1 = desde, $2 = hasta (ambos inclusive, como la función).
+///
+/// En una rectificación, `cantidad` es lo que **queda** de la entrega corregida: entrega +
+/// sus rectificaciones hasta esa fecha (criterio de suma, igual que "reclutados informados").
+/// La función no devuelve el id de la fila, así que la rectificación se ubica por folio, fecha,
+/// cargo y cantidad; si no se encuentra, se deja la cantidad que trae la función.
 const QUERY_EVENTOS: &str = r#"
 SELECT ev.tipo_evento::text AS tipo, ev.fecha, ev.cliente::text AS cliente,
-       ev.servicio::text AS servicio, ev.cargo::text AS cargo, ev.cantidad::int8 AS cantidad,
+       ev.servicio::text AS servicio, ev.cargo::text AS cargo,
+       CASE WHEN ev.tipo_evento = 'rectificacion' THEN coalesce((
+           SELECT o.cantidad + coalesce((SELECT sum(x.cantidad) FROM requerimiento_entregas x
+                                          WHERE x.corrige_entrega_id = o.id
+                                            AND x.tipo = 'rectificacion'
+                                            AND x.fecha_entrega <= ev.fecha), 0)
+             FROM requerimiento_entregas rc
+             JOIN requerimientos rr ON rr.id = rc.requerimiento_id
+             JOIN cargos ca ON ca.id = rc.cargo_id
+             JOIN requerimiento_entregas o ON o.id = rc.corrige_entrega_id
+            WHERE rr.folio = ev.folio AND rc.tipo = 'rectificacion'
+              AND rc.fecha_entrega = ev.fecha AND rc.cantidad = ev.cantidad
+              AND ca.nombre = ev.cargo
+            ORDER BY rc.created_at, rc.id LIMIT 1), ev.cantidad)
+       ELSE ev.cantidad END::int8 AS cantidad,
        ev.folio::text AS folio, ev.estado_entrega::text AS estado_entrega
 FROM public.leer_eventos_almanaque($1, $2) AS ev
 WHERE EXISTS (

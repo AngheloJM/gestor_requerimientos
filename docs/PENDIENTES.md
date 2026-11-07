@@ -173,9 +173,9 @@ A confirmar / TODO(negocio):
       el nuevo flujo, pide igual un valor "por defecto" a nivel servicio, se evalúa después
       (implicaría una columna nueva en `servicios`). No implementado.
 - [x] Almanaque: una rectificación se muestra como "Cargo, Servicio, quedan N" (sin la palabra
-      "corrección" ni signo). N sigue el mismo criterio que "reclutados informados" (la última
-      rectificación reemplaza a la entrega): si se valida que la rectificación es un ajuste
-      (+/−), N pasaría a ser entrega + ajuste. Ver el TODO de reclutados informados.
+      "corrección" ni signo). N = entrega corregida + sus rectificaciones hasta esa fecha
+      (criterio de suma, el mismo de "reclutados informados"). Ej.: entrega 3 + rectificación 2
+      → "quedan 5". Ver el TODO de reclutados informados.
 
 ## Nuevo requerimiento
 
@@ -198,11 +198,13 @@ A confirmar / TODO(negocio):
       opcional). Cambia `cantidad_personas` (actual); la original (`requerimiento_referencia`)
       no se toca; queda en `requerimiento_historial`. La base exige ≥ 1 y ≥ lo ya aceptado, y
       decide quién puede editar (`p2_acceso`).
-- [x] "Reclutados informados" = suma del **valor final de cada entrega**: su última
-      rectificación (`corrige_entrega_id`) o, si no tiene, la entrega original. No se suman
-      entrega + rectificaciones (decisión 2026-11-06, criterio de no duplicar).
+- [x] "Reclutados informados" = suma de las entregas **+** sus rectificaciones (ajustes +/−),
+      criterio decidido por el usuario el 2026-11-07 (reemplaza al de "valor final"). Se suma
+      `cantidad`: `cantidad_reclutada` es NULL siempre en las rectificaciones (CHECK de
+      producción) y hoy también está vacía en las entregas. Ej.: entrega 3 + rectificación 2 = 5.
 - [ ] TODO(negocio): pendiente de validar con Lourdes/Vanessa la semántica exacta de
-      rectificación para reclutados informados. Datos de la base de producción a considerar:
+      rectificación para reclutados informados y el almanaque (reemplazo vs. suma), con el
+      ejemplo: "la entrega de 3 se corrigió con un 2: ¿quedaron 2 o 5?". Hoy se muestra 5. Datos de la base de producción a considerar:
       la rectificación puede ser **negativa** (CHECK `cantidad <> 0`), lo que sugiere un ajuste
       (+/−) y no un reemplazo; solo puede corregir una entrega **aceptada**; y la entrega tiene
       una columna `cantidad_reclutada` (vacía en las rectificaciones) que podría ser el dato de

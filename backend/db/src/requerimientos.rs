@@ -257,17 +257,13 @@ SELECT
     (SELECT coalesce(sum(e.cantidad), 0)::int8 FROM requerimiento_entregas e
       JOIN requerimiento_entrega_decisiones d ON d.entrega_id = e.id AND d.estado = 'aceptada'
       WHERE e.requerimiento_id = r.id) AS total_aceptado,
-    -- Valor final de cada entrega: su última rectificación o, si no tiene, la entrega misma
-    -- (no se suman entrega + rectificaciones). En producción una rectificación siempre
-    -- apunta a una entrega (p2_validar_entrega), así que la cadena tiene un solo nivel.
+    -- Criterio decidido: suma de las entregas + sus rectificaciones (la rectificación es un
+    -- ajuste +/−). Se usa `cantidad`: `cantidad_reclutada` es NULL siempre en rectificaciones
+    -- (CHECK de producción). Mismo criterio que el "quedan N" del almanaque.
     -- TODO(negocio): validar con la clienta la semántica de la rectificación.
-    (SELECT coalesce(sum(coalesce(
-        (SELECT rc.cantidad FROM requerimiento_entregas rc
-          WHERE rc.corrige_entrega_id = e.id
-          ORDER BY rc.created_at DESC, rc.id DESC LIMIT 1),
-        e.cantidad)), 0)::int8
-       FROM requerimiento_entregas e
-      WHERE e.requerimiento_id = r.id AND e.tipo = 'entrega') AS reclutados_informados,
+    (SELECT coalesce(sum(e.cantidad), 0)::int8 FROM requerimiento_entregas e
+      WHERE e.requerimiento_id = r.id
+        AND e.tipo IN ('entrega', 'rectificacion')) AS reclutados_informados,
     u.nombre::text AS solicitante_nombre, uc.nombre::text AS solicitante_cargo,
     u.division::text AS solicitante_division, u.region::text AS solicitante_region,
     sup.nombre::text AS inmediato_superior,
@@ -317,8 +313,8 @@ pub struct DetalleRequerimiento {
     pub cantidad_original: Option<i32>,
     /// Suma de entregas con decisión `aceptada` (mismo cálculo que usa la base al validar).
     pub total_aceptado: i64,
-    /// Suma del valor final de cada entrega (última rectificación o la entrega original),
-    /// sin duplicar. TODO(negocio): semántica de la rectificación pendiente de validar.
+    /// Suma de entregas + rectificaciones (ajustes +/−).
+    /// TODO(negocio): semántica de la rectificación pendiente de validar.
     pub reclutados_informados: i64,
     pub solicitante_nombre: Option<String>,
     pub solicitante_cargo: Option<String>,

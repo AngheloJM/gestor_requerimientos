@@ -143,7 +143,8 @@ async fn cuatro_categorias_con_cliente_folio_y_estado(pool: db::PgPool) {
             "Cliente Alfa",
             "Call center",
             "Operador",
-            2,
+            // Entrega de 3 + rectificación de 2: quedan 5 (criterio de suma).
+            5,
             0,
             Some("pendiente"),
             &["REQ-000001"]

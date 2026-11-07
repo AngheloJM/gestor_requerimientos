@@ -15,8 +15,8 @@ import { cn } from '@/lib/utils'
  * "Cargo, Servicio, cantidad" — sin categorías ni colores por tipo de movimiento. El detalle
  * (cliente, estado, folios, fecha pactada de ingreso a operaciones) se ve al tocar el día.
  * Revisión 06/11/2026: una rectificación se muestra como la cantidad que **queda** ("quedan N"),
- * sin la palabra "corrección" ni signo. Mismo criterio que "reclutados informados": la última
- * rectificación reemplaza a la entrega (semántica a validar, ver docs/PENDIENTES.md).
+ * sin la palabra "corrección" ni signo. La API ya trae lo que queda: entrega + rectificaciones
+ * (criterio de suma, igual que "reclutados informados"; semántica a validar, ver PENDIENTES).
  * Los ingresos a operación y salidas ya no se muestran en el calendario.
  */
 type Linea = LineaAlmanaque & { correccion: boolean }

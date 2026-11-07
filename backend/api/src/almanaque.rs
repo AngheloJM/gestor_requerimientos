@@ -45,7 +45,7 @@ pub struct LineaDto {
     pub cargo: Option<String>,
     /// Solo entregas/rectificaciones: pendiente | aceptada | rechazada.
     pub estado_entrega: Option<String>,
-    /// Suma (las rectificaciones pueden ser negativas).
+    /// Suma. En rectificaciones es la cantidad que queda (entrega + ajustes hasta la fecha).
     pub cantidad: i64,
     /// Registros con cantidad NULL (no sumados).
     pub registros_sin_cantidad: u32,

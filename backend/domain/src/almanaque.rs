@@ -121,7 +121,7 @@ pub struct Movimiento {
     pub servicio: Option<String>,
     pub cargo: Option<String>,
     /// `None` si la cantidad es NULL (`requerimientos.cantidad_personas` es nullable).
-    /// Las rectificaciones pueden ser negativas (CHECK de la base: `cantidad <> 0`).
+    /// En rectificaciones, la capa de datos entrega lo que queda (entrega + ajustes).
     pub cantidad: Option<i64>,
     pub folio: Option<String>,
     /// Solo entregas/rectificaciones: `pendiente` (sin decisión), `aceptada` o `rechazada`.
