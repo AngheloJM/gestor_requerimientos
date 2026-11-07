@@ -774,19 +774,50 @@ pub struct MontoCentroConfig {
     pub monto: Decimal,
 }
 
-/// Centros de costo de los servicios **activos** donde está asignado el cargo.
-pub async fn centros_posibles(conn: &mut PgConnection, cargo_id: Uuid) -> R<Vec<CentroRef>> {
-    Ok(sqlx::query_as(
-        "SELECT DISTINCT cc.id, cc.codigo || ' · ' || cc.nombre AS nombre
-         FROM servicio_cargos sc
-         JOIN servicios s      ON s.id = sc.servicio_id AND s.activo = true
-         JOIN centros_costo cc ON cc.id = s.centro_costo_id
-         WHERE sc.cargo_id = $1
-         ORDER BY 2",
+/// Centros de costo entre los que se puede repartir un cargo compartido.
+#[derive(Debug, Clone)]
+pub struct CentrosPosibles {
+    pub centros: Vec<CentroRef>,
+    /// El cargo no está en ningún servicio activo: se puede repartir entre cualquier centro.
+    pub sin_servicio: bool,
+}
+
+/// Regla (revisión 06/11/2026, punto 4; decisión del 2026-11-07):
+/// - cargo en servicios activos → los centros de costo de esos servicios (con uno solo queda
+///   bloqueado: su composición se arma dentro del servicio);
+/// - cargo **sin ningún servicio activo** → cualquier centro de costo.
+pub async fn centros_posibles(conn: &mut PgConnection, cargo_id: Uuid) -> R<CentrosPosibles> {
+    let en_servicio: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM servicio_cargos sc
+                          JOIN servicios s ON s.id = sc.servicio_id AND s.activo = true
+                         WHERE sc.cargo_id = $1)",
     )
     .bind(cargo_id)
-    .fetch_all(conn)
-    .await?)
+    .fetch_one(&mut *conn)
+    .await?;
+    let centros = if en_servicio {
+        sqlx::query_as(
+            "SELECT DISTINCT cc.id, cc.codigo || ' · ' || cc.nombre AS nombre
+             FROM servicio_cargos sc
+             JOIN servicios s      ON s.id = sc.servicio_id AND s.activo = true
+             JOIN centros_costo cc ON cc.id = s.centro_costo_id
+             WHERE sc.cargo_id = $1
+             ORDER BY 2",
+        )
+        .bind(cargo_id)
+        .fetch_all(&mut *conn)
+        .await?
+    } else {
+        sqlx::query_as(
+            "SELECT cc.id, cc.codigo || ' · ' || cc.nombre AS nombre FROM centros_costo cc ORDER BY 2",
+        )
+        .fetch_all(&mut *conn)
+        .await?
+    };
+    Ok(CentrosPosibles {
+        centros,
+        sin_servicio: !en_servicio,
+    })
 }
 
 pub async fn distribucion(conn: &mut PgConnection, cargo_id: Uuid) -> R<Vec<MontoCentroConfig>> {

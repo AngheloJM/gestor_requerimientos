@@ -10,6 +10,7 @@ import {
 } from '@/api'
 import { EstadoBadge } from '@/components/EstadoBadge'
 import { CargosServicio } from '@/components/matriz/CargosServicio'
+import { TIPO_CARGO } from '@/components/matriz/SelectorCargo'
 import { CrudSeccion, numeroONulo, texto, textoONulo, type Valores } from '@/components/matriz/CrudSeccion'
 import { DEPARTAMENTOS } from '@/lib/catalogos'
 import { formatFecha } from '@/lib/format'
@@ -265,7 +266,6 @@ export function Servicios({ esRrhh, abrirId }: ConApertura) {
 
 // --- 4. Cargos -------------------------------------------------------------------------
 
-const TIPO_CARGO: Record<string, string> = { operativo: 'Operativo', administrativo_staff: 'Administrativo (staff)' }
 
 export function CargosSeccion({ esRrhh }: Permisos) {
   const q = useConfigLista<CargoCfg>('cargos')

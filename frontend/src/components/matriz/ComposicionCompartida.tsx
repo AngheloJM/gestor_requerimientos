@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { type CargoCfg, type ComposicionCompartida as Compartida, useCompartida, useCompartidas, useConfigLista, useGuardarCompartida } from '@/api'
 import { ErrorApi } from '@/components/ErrorApi'
+import { SelectorCargo } from '@/components/matriz/SelectorCargo'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatMonto } from '@/lib/format'
@@ -69,23 +70,18 @@ function Formulario({ cargoInicial, cerrar }: { cargoInicial?: string; cerrar: (
       <p className="font-semibold text-nova-titulo">Composición de cargo compartido</p>
       <label className="grid max-w-md gap-1 text-xs text-nova-gris">
         Cargo *
-        <select
+        <SelectorCargo
           className={entrada}
           value={cargo}
           disabled={!!cargoInicial}
-          onChange={(e) => {
-            setCargo(e.target.value)
+          cargos={cargos.data ?? []}
+          todos={cargos.data ?? []}
+          onChange={(id) => {
+            setCargo(id)
             setPares(null)
             setAviso(undefined)
           }}
-        >
-          <option value="">Seleccione una opción</option>
-          {(cargos.data ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
-        </select>
+        />
       </label>
 
       {cargo && actual.isPending && <Skeleton className="h-24 rounded-lg" />}
@@ -103,6 +99,10 @@ function Formulario({ cargoInicial, cerrar }: { cargoInicial?: string; cerrar: (
             </span>
           </span>
         </p>
+      )}
+
+      {datos && datos.compartido && datos.sin_servicio && (
+        <p className="text-xs text-nova-gris">Cargo sin servicio asignado: se puede repartir entre cualquier centro de costo.</p>
       )}
 
       {datos && datos.compartido && (

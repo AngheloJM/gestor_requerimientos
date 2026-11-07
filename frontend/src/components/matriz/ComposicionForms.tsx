@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { type CargoCfg, type FilaMatriz, type ServicioCfg, useConfigLista, useGuardarComposicion } from '@/api'
 import { ErrorApi } from '@/components/ErrorApi'
+import { SelectorCargo } from '@/components/matriz/SelectorCargo'
 import { Button } from '@/components/ui/button'
 
 const MONTO = /^\d{1,9}(\.\d{1,2})?$/
@@ -166,14 +167,13 @@ export function NuevaComposicion({
         )}
         <label className="grid gap-1 text-xs text-nova-gris">
           Cargo *
-          <select className={entrada} value={cargo} onChange={(e) => setCargo(e.target.value)}>
-            <option value="">Seleccione una opción</option>
-            {(cargos.data ?? []).filter((c) => !excluirCargos.includes(c.id)).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+          <SelectorCargo
+            className={entrada}
+            value={cargo}
+            onChange={setCargo}
+            cargos={(cargos.data ?? []).filter((c) => !excluirCargos.includes(c.id))}
+            todos={cargos.data ?? []}
+          />
         </label>
         <label className="grid gap-1 text-xs text-nova-gris">
           Haber básico diurno (Bs) *

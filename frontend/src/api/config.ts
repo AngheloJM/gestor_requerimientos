@@ -195,6 +195,8 @@ export interface ComposicionCompartida {
   centros_posibles: { id: Uuid; nombre: string }[]
   /** false: el cargo tiene un solo centro de costo posible (o ninguno): no se puede guardar. */
   compartido: boolean
+  /** El cargo no está en ningún servicio activo: se reparte entre cualquier centro de costo. */
+  sin_servicio: boolean
   distribucion: MontoCentroCfg[]
   total: string
 }

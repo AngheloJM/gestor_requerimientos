@@ -825,9 +825,12 @@ pub struct ComposicionCompartidaDto {
     /// Solo en el listado.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cargo_nombre: Option<String>,
-    /// Centros de los servicios activos donde está el cargo. Con menos de 2, no se puede guardar.
+    /// Centros de los servicios activos donde está el cargo (o todos, si no está en ninguno).
+    /// Con menos de 2, no se puede guardar.
     pub centros_posibles: Vec<cfg::CentroRef>,
     pub compartido: bool,
+    /// El cargo no está en ningún servicio activo (se reparte entre cualquier centro).
+    pub sin_servicio: bool,
     pub distribucion: Vec<MontoCentroDto>,
     pub total: Decimal,
 }
@@ -850,8 +853,9 @@ async fn armar_compartida(
     Ok(ComposicionCompartidaDto {
         cargo_id,
         cargo_nombre: None,
-        compartido: posibles.len() >= cc::MIN_CENTROS,
-        centros_posibles: posibles,
+        compartido: posibles.centros.len() >= cc::MIN_CENTROS,
+        sin_servicio: posibles.sin_servicio,
+        centros_posibles: posibles.centros,
         total: cc::total(&pares),
         distribucion: filas
             .into_iter()
@@ -925,6 +929,7 @@ pub async fn guardar_compartida(
     if !pares.is_empty() {
         let posibles: Vec<Uuid> = cfg::centros_posibles(&mut tx, cargo_id)
             .await?
+            .centros
             .into_iter()
             .map(|c| c.id)
             .collect();

@@ -208,6 +208,12 @@ A confirmar / TODO(negocio):
       abre Nuevo requerimiento con ese día como fecha de inicio de operación.
 - [ ] A confirmar: el calendario muestra fechas de **entrega a capacitación**, pero el día elegido
       se precarga como fecha de inicio de **operación** (lo pedido). ¿Es lo que espera la clienta?
+- [x] Punto 4: "+ Crear cargo nuevo" en el desplegable de cargos de "Agregar cargo" (servicio) y
+      de "Composición de cargo compartido": da de alta el cargo en el catálogo sin salir de la
+      pantalla y avisa si ya existe uno con ese nombre (sin distinguir mayúsculas ni espacios).
+- [x] Cargos compartidos (decisión del 2026-11-07): un cargo **sin ningún servicio activo** se
+      puede repartir entre cualquier centro de costo (mínimo 2). Cargo en servicios con un solo
+      centro: sigue bloqueado. Con 2 o más centros: sin cambios. Sin cambio de base.
 - [ ] Migración 0006 **no aplicada en producción** (cambia una función en uso): requiere
       confirmación, respaldo y ensayo con ROLLBACK.
 

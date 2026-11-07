@@ -485,16 +485,52 @@ async fn composicion_compartida_por_centros(pool: db::PgPool) {
         cfg::centros_posibles(&mut tx, uid(OPERADOR))
             .await
             .unwrap()
+            .centros
             .len(),
         2
     );
-    assert_eq!(
-        cfg::centros_posibles(&mut tx, uid(TECNICO))
-            .await
-            .unwrap()
-            .len(),
-        1
-    );
+    let tecnico = cfg::centros_posibles(&mut tx, uid(TECNICO)).await.unwrap();
+    assert_eq!(tecnico.centros.len(), 1, "un solo centro: sigue bloqueado");
+    assert!(!tecnico.sin_servicio);
+
+    // Cargo nuevo, sin ningún servicio: se reparte entre cualquier centro de costo.
+    let nuevo = cfg::crear_cargo(
+        &mut tx,
+        &cfg::DatosCargo {
+            nombre: "Supervisor regional".into(),
+            tipo: "operativo".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let libre = cfg::centros_posibles(&mut tx, nuevo).await.unwrap();
+    assert!(libre.sin_servicio);
+    let todos: i64 = sqlx::query_scalar("SELECT count(*) FROM centros_costo")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(libre.centros.len() as i64, todos);
+    let ids: Vec<uuid::Uuid> = libre.centros.iter().map(|c| c.id).collect();
+    let reparto = [
+        MontoCentro {
+            centro_costo_id: uid(CC1),
+            monto: dec!(500),
+        },
+        MontoCentro {
+            centro_costo_id: uid(CC2),
+            monto: dec!(500),
+        },
+    ];
+    domain::composicion_compartida::validar(&ids, &reparto).unwrap();
+    cfg::guardar_distribucion(&mut tx, nuevo, &reparto)
+        .await
+        .unwrap();
+    assert_eq!(cfg::distribucion(&mut tx, nuevo).await.unwrap().len(), 2);
+    sqlx::query("DELETE FROM cargo_centros_costo WHERE cargo_id = $1")
+        .bind(nuevo)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
     let pares = [
         MontoCentro {
             centro_costo_id: uid(CC1),
