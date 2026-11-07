@@ -195,9 +195,12 @@ A confirmar / TODO(negocio):
       para que una migración aditiva futura agregue `departamento` (NULL = nacional).
 - [ ] Punto 9: no se propone una fecha de operación (no hay dato en la base del que sacarla).
       Si la clienta la quiere, falta definir de dónde sale.
-- [ ] A confirmar: la fecha de capacitación que **guarda** la base al crear sigue saliendo del
-      tiempo general del servicio (trigger de producción); la "normal" que se muestra usa el
-      tiempo del cargo si existe, así que pueden diferir. No se cambió el trigger.
+- [x] La fecha de capacitación que **guarda** la base al crear usa el mismo criterio que la
+      pantalla: tiempo del cargo (aunque sea 0) y, si no lo tiene, el general del servicio
+      (migración 0006, reemplaza el trigger `validar_fechas_nuevo_requerimiento`; decisión del
+      2026-11-07). `crear_requerimiento_con_snapshot` no se tocó: el trigger corre después.
+- [ ] Migración 0006 **no aplicada en producción** (cambia una función en uso): requiere
+      confirmación, respaldo y ensayo con ROLLBACK.
 
 ## Nuevo requerimiento
 

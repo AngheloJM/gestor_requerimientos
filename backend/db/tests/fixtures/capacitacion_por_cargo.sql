@@ -1,0 +1,1 @@
+../../../migrations/0006_capacitacion_por_cargo.sql

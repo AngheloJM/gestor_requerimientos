@@ -131,7 +131,8 @@ fn regla(r: Result<String, DbError>) -> String {
         "datos",
         "p2_edicion",
         "p2_creacion",
-        "revision_matriz"
+        "revision_matriz",
+        "capacitacion_por_cargo"
     )
 )]
 async fn opciones_segun_servicios_del_usuario(pool: db::PgPool) {
@@ -167,7 +168,8 @@ async fn opciones_segun_servicios_del_usuario(pool: db::PgPool) {
         "datos",
         "p2_edicion",
         "p2_creacion",
-        "revision_matriz"
+        "revision_matriz",
+        "capacitacion_por_cargo"
     )
 )]
 async fn crea_pendiente_con_snapshot_y_bonos_extra(pool: db::PgPool) {
@@ -219,7 +221,8 @@ async fn crea_pendiente_con_snapshot_y_bonos_extra(pool: db::PgPool) {
         "datos",
         "p2_edicion",
         "p2_creacion",
-        "revision_matriz"
+        "revision_matriz",
+        "capacitacion_por_cargo"
     )
 )]
 async fn capacitacion_se_calcula_hacia_atras(pool: db::PgPool) {
@@ -254,7 +257,94 @@ async fn capacitacion_se_calcula_hacia_atras(pool: db::PgPool) {
         "datos",
         "p2_edicion",
         "p2_creacion",
-        "revision_matriz"
+        "revision_matriz",
+        "capacitacion_por_cargo"
+    )
+)]
+async fn capacitacion_usa_el_tiempo_del_cargo_antes_que_el_del_servicio(pool: db::PgPool) {
+    sqlx::query("UPDATE cargos SET tipo = 'operativo' WHERE id = $1")
+        .bind(uid(TECNICO))
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE servicios SET tiempo_capacitacion_dias = 10 WHERE id = $1")
+        .bind(uid(SOPORTE))
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "UPDATE servicio_cargos SET tiempo_capacitacion_dias = 7
+          WHERE servicio_id = $1 AND cargo_id = $2",
+    )
+    .bind(uid(SOPORTE))
+    .bind(uid(TECNICO))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let folio = crear_como(&pool, ESTANDAR, &nuevo(SOPORTE, TECNICO))
+        .await
+        .unwrap();
+    let (cap, snap): (NaiveDate, Option<i32>) = sqlx::query_as(
+        "SELECT fecha_inicio_capacitacion, tiempo_capacitacion_snap FROM requerimientos
+          WHERE folio = $1",
+    )
+    .bind(&folio)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        cap,
+        f(12, 8),
+        "15/12 − 7 días del cargo (no los 10 del servicio)"
+    );
+    assert_eq!(snap, Some(7), "el snapshot guarda los días usados");
+    let original: NaiveDate = sqlx::query_scalar(
+        "SELECT rr.capacitacion_original FROM requerimiento_referencia rr
+           JOIN requerimientos r ON r.id = rr.requerimiento_id WHERE r.folio = $1",
+    )
+    .bind(&folio)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        original,
+        f(12, 8),
+        "la referencia original toma el valor final"
+    );
+
+    // Cargo con 0 días: capacitación = operación (no se cae al tiempo del servicio).
+    sqlx::query(
+        "UPDATE servicio_cargos SET tiempo_capacitacion_dias = 0
+          WHERE servicio_id = $1 AND cargo_id = $2",
+    )
+    .bind(uid(SOPORTE))
+    .bind(uid(TECNICO))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let folio = crear_como(&pool, ESTANDAR, &nuevo(SOPORTE, TECNICO))
+        .await
+        .unwrap();
+    let cap: NaiveDate =
+        sqlx::query_scalar("SELECT fecha_inicio_capacitacion FROM requerimientos WHERE folio = $1")
+            .bind(&folio)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(cap, f(12, 15), "15/12 − 0 días del cargo");
+}
+
+#[ignore = "requiere DATABASE_URL (Postgres de pruebas)"]
+#[sqlx::test(
+    migrations = false,
+    fixtures(
+        "supabase_subset",
+        "rls_test",
+        "datos",
+        "p2_edicion",
+        "p2_creacion",
+        "revision_matriz",
+        "capacitacion_por_cargo"
     )
 )]
 async fn reglas_de_creacion_de_la_base(pool: db::PgPool) {
