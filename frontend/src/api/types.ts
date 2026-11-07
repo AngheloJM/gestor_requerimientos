@@ -448,3 +448,25 @@ export interface Tablero {
   /** Kanban desde solicitudes_cambio. */
   kanban: Record<Area, TarjetaKanban[]>
 }
+
+// GET /feriados?anio=  (feriados nacionales; alta y baja solo RR.HH.)
+export interface Feriado {
+  id: Uuid
+  fecha: FechaIso
+  nombre: string
+  created_at: string
+}
+
+// GET /requerimientos/plazos?operacion=&servicio_id=&cargo_id=
+export interface Plazos {
+  hoy: FechaIso
+  /** Operación − tiempo de capacitación del cargo (o el general del servicio). */
+  capacitacion_normal: FechaIso | null
+  origen_normal: 'cargo' | 'servicio' | null
+  /** Operación − tiempo de capacitación ajustada del cargo. */
+  capacitacion_ajustada: FechaIso | null
+  /** La ajustada si existe; si no, la normal. */
+  entrega_capacitacion: FechaIso | null
+  /** Días hábiles (sin sábados, domingos ni feriados) desde hoy hasta la entrega. */
+  dias_reclutamiento: number | null
+}

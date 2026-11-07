@@ -49,6 +49,11 @@ describe('createApiClient', () => {
     expect((f.mock.calls[0]![1]!.headers as Record<string, string>).Authorization).toBeUndefined()
   })
 
+  it('un 201 sin cuerpo resuelve sin error', async () => {
+    const f = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 201 }))
+    await expect(cliente(f).post('/feriados', { fecha: '2026-11-09', nombre: 'X' })).resolves.toBeUndefined()
+  })
+
   it('PATCH serializa el body con Content-Type JSON', async () => {
     const f = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(200, { id: '1' }))
     await cliente(f).patch('/aprobaciones/1', { fecha_fin: null })

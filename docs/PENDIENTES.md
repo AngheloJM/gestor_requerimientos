@@ -176,6 +176,28 @@ A confirmar / TODO(negocio):
       "corrección" ni signo). N = entrega corregida + sus rectificaciones hasta esa fecha
       (criterio de suma, el mismo de "reclutados informados"). Ej.: entrega 3 + rectificación 2
       → "quedan 5". Ver el TODO de reclutados informados.
+- [x] Nuevo requerimiento (puntos 9 a 11): la fecha de inicio de operación es la única que
+      escribe el usuario; al elegirla se muestran (sin guardarse) la fecha de inicio máximo de
+      capacitación normal (operación − tiempo de capacitación del cargo; si el cargo no lo tiene,
+      el tiempo general del servicio), la ajustada (operación − tiempo de capacitación ajustada
+      del cargo) y el tiempo de reclutamiento en días hábiles. El OJT no entra.
+- [x] Feriados (punto 12): tabla nueva `feriados` (migración 0005, aditiva), cargada desde
+      Parámetros salariales (solo RR.HH.). Solo nacionales.
+- [ ] Migración 0005 (feriados) **no aplicada en producción**: requiere confirmación y respaldo.
+- [ ] TODO(negocio): la resta de capacitación se hace en días **corridos** (valor por defecto;
+      no está definido si son hábiles).
+- [ ] TODO(negocio): el tiempo de reclutamiento usa la fecha **ajustada** si existe y, si no,
+      la normal. Falta que Lourdes explique qué diferencia a una de la otra.
+- [ ] TODO(negocio): días hábiles contados desde hoy (incluido) hasta la entrega a capacitación
+      (excluida), como una resta de fechas. Con el ejemplo de la clienta (solicitud el viernes
+      06/11, entrega el martes 10/11) da 2 días hábiles.
+- [ ] TODO(negocio): ¿feriados por departamento? Hoy solo nacionales. La tabla tiene clave `id`
+      para que una migración aditiva futura agregue `departamento` (NULL = nacional).
+- [ ] Punto 9: no se propone una fecha de operación (no hay dato en la base del que sacarla).
+      Si la clienta la quiere, falta definir de dónde sale.
+- [ ] A confirmar: la fecha de capacitación que **guarda** la base al crear sigue saliendo del
+      tiempo general del servicio (trigger de producción); la "normal" que se muestra usa el
+      tiempo del cargo si existe, así que pueden diferir. No se cambió el trigger.
 
 ## Nuevo requerimiento
 

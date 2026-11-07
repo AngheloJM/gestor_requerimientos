@@ -83,7 +83,9 @@ export function createApiClient(config: ApiClientConfig) {
 
     if (!res.ok) throw await parseError(res)
     if (res.status === 204) return undefined as T
-    return (await res.json()) as T
+    // Algunas altas responden 201 sin cuerpo: no hay JSON que leer.
+    const texto = await res.text()
+    return (texto ? JSON.parse(texto) : undefined) as T
   }
 
   return {

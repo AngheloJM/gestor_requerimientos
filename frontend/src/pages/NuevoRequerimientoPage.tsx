@@ -16,6 +16,7 @@ import {
 import { ErrorApi } from '@/components/ErrorApi'
 import { PanelServicio } from '@/components/requerimiento/PanelServicio'
 import { PanelSolicitante } from '@/components/requerimiento/PanelSolicitante'
+import { PlazosCalculados } from '@/components/requerimiento/PlazosCalculados'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -447,6 +448,13 @@ export function NuevoRequerimientoPage() {
               <Campo id="fecha_inicio_operacion" etiqueta="Fecha de inicio de operación" error={errors.fecha_inicio_operacion?.message}>
                 <Input id="fecha_inicio_operacion" type="date" className="h-9 bg-white" aria-invalid={!!errors.fecha_inicio_operacion} {...register('fecha_inicio_operacion')} />
               </Campo>
+            </div>
+            <div className="mt-4">
+              <PlazosCalculados
+                operacion={operacion}
+                servicioId={servicio && servicio !== SIN_SERVICIO ? servicio : undefined}
+                cargoId={cargoId || undefined}
+              />
             </div>
             <div className="mt-4 grid gap-1.5">
               <Label htmlFor="comentarios">Comentarios adicionales</Label>

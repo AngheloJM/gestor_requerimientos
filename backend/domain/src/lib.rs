@@ -15,6 +15,7 @@ pub mod composicion_compartida;
 pub mod composicion_salarial;
 pub mod contrato_comercial;
 pub mod matriz;
+pub mod plazos;
 pub mod proyecto;
 pub mod requerimiento;
 pub mod rol;

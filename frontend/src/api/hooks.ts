@@ -6,6 +6,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api } from '@/api/instance'
 import type {
+  Feriado,
+  Plazos,
   Almanaque,
   Aprobacion,
   EditarRequerimiento,
@@ -288,3 +290,50 @@ export function useRegistrarParametro() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.parametros }),
   })
 }
+
+// --- Feriados y plazos (revisión 06/11/2026) -------------------------------------------------
+
+export function useFeriados(anio: number) {
+  return useQuery({
+    queryKey: ['feriados', anio] as const,
+    queryFn: ({ signal }) => api.get<Feriado[]>('/feriados', { anio }, signal),
+  })
+}
+
+export function useCrearFeriado() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { fecha: string; nombre: string }) => api.post<void>('/feriados', body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['feriados'] })
+      void qc.invalidateQueries({ queryKey: ['requerimientos', 'plazos'] })
+    },
+  })
+}
+
+export function useEliminarFeriado() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.del<void>(`/feriados/${encodeURIComponent(id)}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['feriados'] })
+      void qc.invalidateQueries({ queryKey: ['requerimientos', 'plazos'] })
+    },
+  })
+}
+
+/** Plazos calculados al elegir la fecha de operación (y servicio + cargo, si hay). */
+export function usePlazos(operacion: string | undefined, servicioId: string | undefined, cargoId: string | undefined) {
+  const valida = !!operacion && /^\d{4}-\d{2}-\d{2}$/.test(operacion)
+  return useQuery({
+    queryKey: ['requerimientos', 'plazos', operacion, servicioId, cargoId] as const,
+    queryFn: ({ signal }) =>
+      api.get<Plazos>(
+        '/requerimientos/plazos',
+        { operacion: operacion!, ...(servicioId && cargoId ? { servicio_id: servicioId, cargo_id: cargoId } : {}) },
+        signal,
+      ),
+    enabled: valida,
+  })
+}
+

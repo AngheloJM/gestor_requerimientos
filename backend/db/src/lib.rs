@@ -14,6 +14,7 @@ pub mod almanaque;
 pub mod aprobaciones;
 pub mod auth;
 pub mod configuracion;
+pub mod feriados;
 pub mod matriz;
 pub mod parametros;
 pub mod requerimientos;

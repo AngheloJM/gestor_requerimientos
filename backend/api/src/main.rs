@@ -6,6 +6,7 @@ mod configuracion;
 mod cors;
 mod dto;
 mod error;
+mod feriados;
 mod limitador;
 mod matriz;
 mod me;
@@ -27,7 +28,7 @@ use axum::{
     extract::DefaultBodyLimit,
     http::StatusCode,
     middleware,
-    routing::{get, patch, post, put},
+    routing::{delete, get, patch, post, put},
 };
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
@@ -117,6 +118,9 @@ fn protected_routes(state: AppState) -> Router<AppState> {
             get(requerimientos::listar).post(requerimientos::crear),
         )
         .route("/requerimientos/opciones", get(requerimientos::opciones))
+        .route("/requerimientos/plazos", get(feriados::plazos))
+        .route("/feriados", get(feriados::listar).post(feriados::crear))
+        .route("/feriados/{id}", delete(feriados::eliminar))
         .route(
             "/requerimientos/{id}",
             get(requerimientos::detalle).patch(requerimientos::editar_cantidad),

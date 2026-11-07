@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useMe, useParametros, useRegistrarParametro } from '@/api'
 import { EstadoBadge } from '@/components/EstadoBadge'
 import { ErrorApi } from '@/components/ErrorApi'
+import { Feriados } from '@/components/Feriados'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -152,6 +153,8 @@ export function ParametrosPage() {
           </tbody>
         </table>
       </section>
+
+      <Feriados esRrhh={esRrhh} />
     </div>
   )
 }
